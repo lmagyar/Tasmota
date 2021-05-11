@@ -447,7 +447,7 @@
 #undef USE_TX20_WIND_SENSOR                      // Disable support for La Crosse TX20 anemometer
 #undef USE_TX23_WIND_SENSOR                      // Disable support for La Crosse TX23 anemometer
 #undef USE_WINDMETER                             // Disable support for analog anemometer (+2k2 code)
-#undef USE_RC_SWITCH                             // Disable support for RF transceiver using library RcSwitch
+//#undef USE_RC_SWITCH                             // Disable support for RF transceiver using library RcSwitch
 #undef USE_RF_SENSOR                             // Disable support for RF sensor receiver (434MHz or 868MHz) (+0k8 code)
 #undef USE_HRE                                   // Disable support for Badger HR-E Water Meter (+1k4 code)
 #undef USE_A4988_STEPPER                         // Disable support for A4988_Stepper
