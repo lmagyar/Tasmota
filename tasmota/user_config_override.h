@@ -89,5 +89,13 @@ Examples :
 #undef USE_DOMOTICZ
 #endif
 
+#ifdef USE_EMULATION_HUE
+#undef USE_EMULATION_HUE
+#endif
+
+#ifdef USE_EMULATION_WEMO
+#undef USE_EMULATION_WEMO
+#endif
+
 
 #endif  // _USER_CONFIG_OVERRIDE_H_
