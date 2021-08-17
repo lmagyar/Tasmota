@@ -97,5 +97,13 @@ Examples :
 #undef USE_EMULATION_WEMO
 #endif
 
+#ifdef USE_KNX
+#undef USE_KNX
+#endif
+
+#ifdef USE_KNX_WEB_MENU
+#undef USE_KNX_WEB_MENU
+#endif
+
 
 #endif  // _USER_CONFIG_OVERRIDE_H_
