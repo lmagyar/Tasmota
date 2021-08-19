@@ -1301,11 +1301,7 @@ void DisplayDTVarsTeleperiod(void) {
   if (jlen < DTV_JSON_SIZE) {
     char *json = (char*)malloc(jlen + 2);
     if (json) {
-#ifdef MQTT_DATA_STRING
-      strlcpy(json, TasmotaGlobal.mqtt_data.c_str(), jlen + 1);
-#else
-      strlcpy(json, TasmotaGlobal.mqtt_data, jlen + 1);
-#endif
+      strlcpy(json, ResponseData(), jlen + 1);
       get_dt_vars(json);
       free(json);
     }
@@ -1324,11 +1320,7 @@ void get_dt_mqtt(void) {
     ResponseJsonStart();
     ResponseJsonEnd();
   }
-#ifdef MQTT_DATA_STRING
-  get_dt_vars(TasmotaGlobal.mqtt_data.c_str());
-#else
-  get_dt_vars(TasmotaGlobal.mqtt_data);
-#endif
+  get_dt_vars(ResponseData());
 }
 
 void get_dt_vars(char *json) {
@@ -1576,9 +1568,7 @@ void DisplayJsonValue(const char* topic, const char* device, const char* mkey, c
   char source[Settings->display_cols[0] - Settings->display_cols[1]];
   char svalue[Settings->display_cols[1] +1];
 
-#ifdef USE_DEBUG_DRIVER
-  ShowFreeMem(PSTR("DisplayJsonValue"));
-#endif
+  SHOW_FREE_MEM(PSTR("DisplayJsonValue"));
 
   memset(spaces, 0x20, sizeof(spaces));
   spaces[sizeof(spaces) -1] = '\0';
@@ -1745,13 +1735,8 @@ void DisplayLocalSensor(void)
 {
   if ((Settings->display_mode &0x02) && (0 == TasmotaGlobal.tele_period)) {
     char no_topic[1] = { 0 };
-#ifdef MQTT_DATA_STRING
-//    DisplayAnalyzeJson(TasmotaGlobal.mqtt_topic, TasmotaGlobal.mqtt_data.c_str());  // Add local topic
-    DisplayAnalyzeJson(no_topic, TasmotaGlobal.mqtt_data.c_str());    // Discard any topic
-#else
-//    DisplayAnalyzeJson(TasmotaGlobal.mqtt_topic, TasmotaGlobal.mqtt_data);  // Add local topic
-    DisplayAnalyzeJson(no_topic, TasmotaGlobal.mqtt_data);    // Discard any topic
-#endif
+//    DisplayAnalyzeJson(TasmotaGlobal.mqtt_topic, ResponseData());  // Add local topic
+    DisplayAnalyzeJson(no_topic, ResponseData());    // Discard any topic
   }
 }
 

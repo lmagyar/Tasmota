@@ -36,7 +36,7 @@ static void class_init(bvm *vm, bclass *c, const bnfuncinfo *lib)
             if (lib->function) { /* method */
                 be_prim_method_bind(vm, c, s, lib->function);
             } else {
-                be_member_bind(vm, c, s); /* member */
+                be_member_bind(vm, c, s, btrue); /* member */
             }
             ++lib;
         }
@@ -206,6 +206,12 @@ BERRY_API bbool be_isinstance(bvm *vm, int index)
 {
     bvalue *v = be_indexof(vm, index);
     return var_isinstance(v);
+}
+
+BERRY_API bbool be_ismodule(bvm *vm, int index)
+{
+    bvalue *v = be_indexof(vm, index);
+    return var_ismodule(v);
 }
 
 BERRY_API bbool be_islist(bvm *vm, int index)
@@ -634,7 +640,8 @@ BERRY_API bbool be_copy(bvm *vm, int index)
     return bfalse;
 }
 
-static int ins_member(bvm *vm, int index, const char *k)
+/* `onlyins` limits the search to instance, and discards module. Makes sure getmethod does not return anything for module. */
+static int ins_member(bvm *vm, int index, const char *k, bbool onlyins)
 {
     int type = BE_NIL;
     bvalue *o = be_indexof(vm, index);
@@ -643,18 +650,28 @@ static int ins_member(bvm *vm, int index, const char *k)
     if (var_isinstance(o)) {
         binstance *obj = var_toobj(o);
         type = be_instance_member(vm, obj, be_newstr(vm, k), top);
+        if (type == BE_NONE) {
+            type = BE_NIL;
+        }
+    } else if (var_ismodule(o) && !onlyins) {
+        bmodule *module = var_toobj(o);
+        bvalue *v = be_module_attr(vm, module, be_newstr(vm, k));
+        if (v != NULL) {
+            *top = *v;
+            type = v->type;
+        }
     }
     return type;
 }
 
 BERRY_API bbool be_getmember(bvm *vm, int index, const char *k)
 {
-    return ins_member(vm, index, k) != BE_NIL;
+    return ins_member(vm, index, k, bfalse) != BE_NIL;
 }
 
 BERRY_API bbool be_getmethod(bvm *vm, int index, const char *k)
 {
-    return basetype(ins_member(vm, index, k)) == BE_FUNCTION;
+    return basetype(ins_member(vm, index, k, btrue)) == BE_FUNCTION;
 }
 
 BERRY_API bbool be_getindex(bvm *vm, int index)

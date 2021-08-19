@@ -1,6 +1,118 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [Unreleased] - Development
+
+## [9.5.0.6]
+### Added
+- Version bump to monitor possible HTTP issues releated to ``SetOption128``
+
+### Changed
+- Berry now compiling in ``strict`` mode to catch more bugs
+
+### Fixed
+- Fixed PWM5 on ESP32C3
+
+## [9.5.0.5] 20210815
+### Added
+- Inital support for Wi-Fi extender (#12784)
+- Neopool commands ``NPPHRes``, ``NPCLRes`` and ``NPIonRes`` (#12813)
+- Support for (Yeelight) Mi Desk Pro using binary tasmota32solo1.bin
+- Initial support for influxdb using ``#define USE_INFLUXDB`` and several ``Ifx`` commands
+- Command ``SetOption128 1`` disabling web referer check default blocking HTTP web commands (#12828)
+
+### Changed
+- NeoPixelBus library from v2.6.3 to v2.6.7
+- Make Sonoff L1 MusicSync persistent (#12008)
+- Relax NTP poll if no ntpserver can be resolved by DNS
+- Move firmware binaries to https://github.com/arendst/Tasmota-firmware/tree/main/release-firmware
+- Default disable CORS for enhanced security and provide user compile option ``#define USE_CORS`` (#12827)
+- Prometheus: All metrics are prefixed with ``tasmota_`` (#12842)
+    Memory metrics have been cleaned up to work consistently between ESP8266 and ESP32
+    The device name is reported as an info metric
+
+### Fixed
+- Neopool communication error (#12813)
+- Negative power values for ADE7953 based devices like Shelly EM (#12874)
+
+## [9.5.0.4] 20210801
+### Added
+- Support for second DNS server
+- Optional IP filter to command ``TCPStart`` (#12806)
+
+### Changed
+- ESP8266Audio library from v1.5.0 to v1.9.2
+
+## [9.5.0.3] 20210729
+### Added
+- Command ``SetSensor1..127 0|1`` to globally disable individual sensor driver
+- Support for CAN bus and Freedom Won Battery Management System by Marius Bezuidenhout (#12651)
+- Berry ESP32 support for I2S audio mp3 playback
+- Berry add module ``introspect``
+- Berry add ``tasmota.wifi()`` and ``tasmota.eth()``
+- LVGL new widget ``lv_wifi_bars``
+
+### Changed
+- ESP32 core library from v1.0.7.1 to v1.0.7.3
+- Disable PSRAM on unsupported hardware
+- Replace spaces by hyphens in final hostname (#12710)
+- Message ``Upload buffer miscompare`` into ``Not enough space``
+- ESP32 remove GPIO initialization to INPUT from not used GPIOs to allow JTAG support
+
+### Fixed
+- Discovery fails when using ``%hostname%`` in a topic (#12710)
+- ESP32-Solo OTA upgrade
+- ESP32 buzzer in PWM mode exception (#12717)
+
+## [9.5.0.2] 20210714
+### Added
+- Initial support for Tasmota Mesh (TasMesh) providing node/broker communication using ESP-NOW (#11939)
+- MQTT minimum password length restriction in GUI (#12553)
+- Command ``SetOption127 1`` to force Wi-Fi in no-sleep mode even if ``Sleep 0`` is not enabled
+- Support for Technoline WS2300-15 Anemometer (#12573)
+- Support for Telaire T6700 Series CO2 sensor by Alexander Savchenko (#12618)
+
+### Changed
+- ESP32 core library from v1.0.7 to v1.0.7.1
+- IRremoteESP8266 library from v2.7.18 to v2.7.19
+- ESP32 Ethernet Phy Type information to IDF v3+
+- Allow buttons to work in AP normal mode (#12518)
+- Enable Ping and rule features for any device compiled with more than 1M flash size (#12539)
+- ESP32 internal sensor driver id moved from 87 to 127
+- Extended supported sensor driver range to 128
+
+### Fixed
+- ESP32-C3 settings layout for configuration backup and restore
+- ESP32 core v2.0.0 setting hostname
+- Berry button handlers and error messages (#12521)
+- Scripter and Display MQTT errors due to MQTT_DATA move to String (#12525)
+- Scripter moving average and sml input validation (#12541)
+- Zigbee Hue angle encoding (#12545)
+- AM2320 value reporting (#12552)
+- Exception 28 when unable to send MQTT message and a topic name without a slash '/' (#12555)
+- Wi-Fi initial setup workaround for 11n only routers (#12566)
+- ESP32 do not use chip temperature sensor as global temperature if external temperature sensor is used (#12630)
+
+## [9.5.0.1] 20210701
+### Added
+- Berry ESP32 partition manager (#12465)
+- Rule event support as JSON payload (#12496)
+- Support for AM2320 Temperature and Humidity Sensor by Lars Wessels (#12485)
+
+### Changed
+- ESP32 core library from v1.0.6 to v1.0.7
+- Speed up initial GUI console refresh
+- Enable UFILESYS, GUI_TRASH_FILE and GUI_EDIT_FILE for any device compiled with more than 1M flash size
+- Simplified configuration for ir-full and removal of tasmota-ircustom
+- Refactor platformio (#12442)
+
+### Fixed
+- ESP32 Webcam add boundary marker before sending mjpeg image (#12376)
+- DDS238-2 wrong reactive power value (#12283)
+- NO VALID JSON regression from may 4th (#12440)
+- Telegram response decoding stopped working after 20210621 and exception on long result message (#12451)
+- Neopool compile error on DEBUG_TASMOTA_SENSOR (#12464)
+
 ## [Released]
 
 ## [9.5.0] 20210617
@@ -352,16 +464,6 @@ All notable changes to this project will be documented in this file.
 - ESP32 LoadStoreError when using ``#define USER_TEMPLATE`` (#9506)
 - Compile error when ``#ifdef USE_IR_RECEIVE`` is disabled regression from 9.1.0.2
 - Prometheus memory leak (#10221)
-
-## [9.2.0] 20201221
-### Fixed Backported
-- Shutter stop issue (#10170)
-- Scripter script_sub_command (#10181)
-- Scripter JSON variable above 32 chars (#10193)
-- Shelly Dimmer power on state (#10154, #10182)
-- Wemo emulation for single devices (#10165, #10194)
-- ESP32 LoadStoreError when using ``#define USER_TEMPLATE`` (#9506)
-- Compile error when ``#ifdef USE_IR_RECEIVE`` is disabled regression from 9.1.0.2
 
 ## [9.2.0] 20201216
 - Release Julie

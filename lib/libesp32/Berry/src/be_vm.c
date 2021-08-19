@@ -28,14 +28,14 @@
 #define vm_error(vm, except, ...) \
     be_raise(vm, except, be_pushfstring(vm, __VA_ARGS__))
 
-#define RA()   (reg + IGET_RA(ins))
-#define RKB()  ((isKB(ins) ? ktab : reg) + KR2idx(IGET_RKB(ins)))
-#define RKC()  ((isKC(ins) ? ktab : reg) + KR2idx(IGET_RKC(ins)))
+#define RA()   (reg + IGET_RA(ins))  /* Get value of register A */
+#define RKB()  ((isKB(ins) ? ktab : reg) + KR2idx(IGET_RKB(ins)))  /* Get value of register or constant B */
+#define RKC()  ((isKC(ins) ? ktab : reg) + KR2idx(IGET_RKC(ins)))  /* Get value of register or constant C */
 
-#define var2cl(_v)          cast(bclosure*, var_toobj(_v))
-#define var2real(_v)        (var_isreal(_v) ? (_v)->v.r : (breal)(_v)->v.i)
-#define val2bool(v)         ((v) ? btrue : bfalse)
-#define ibinop(op, a, b)    ((a)->v.i op (b)->v.i)
+#define var2cl(_v)          cast(bclosure*, var_toobj(_v))  /* cast var to closure */
+#define var2real(_v)        (var_isreal(_v) ? (_v)->v.r : (breal)(_v)->v.i)  /* get var as real or convert to real if integer */
+#define val2bool(v)         ((v) ? btrue : bfalse)  /* get var as bool (trur if non zero) */
+#define ibinop(op, a, b)    ((a)->v.i op (b)->v.i)  /* apply binary operator to both arguments as integers */
 
 #if BE_USE_DEBUG_HOOK
   #define DEBUG_HOOK() \
@@ -149,6 +149,8 @@ static void call_error(bvm *vm, bvalue *v)
         "'%s' value is not callable", be_vtype2str(v));
 }
 
+/* Check that the return value is bool or raise an exception */
+/* `obj` and `method` are only passed for error reporting */
 static void check_bool(bvm *vm, binstance *obj, const char *method)
 {
     if (!var_isbool(vm->top)) {
@@ -182,25 +184,29 @@ static void do_linehook(bvm *vm)
 }
 #endif
 
+/* Prepare the stack for the function/method call */
+/* `func` is a pointer to the function/method on the stack, it contains the closure before call and the result after the call */
+/* `nstackˋ is the stack depth used by the function (determined by compiler), we add BE_STACK_FREE_MIN as a safety margin */
 static void precall(bvm *vm, bvalue *func, int nstack, int mode)
 {
     bcallframe *cf;
-    int expan = nstack + BE_STACK_FREE_MIN;
-    if (vm->stacktop < func + expan) {
-        size_t fpos = func - vm->stack;
-        be_stack_expansion(vm, expan);
-        func = vm->stack + fpos;
+    int expan = nstack + BE_STACK_FREE_MIN; /* `expan` is the minimum required space on the stack */
+    if (vm->stacktop < func + expan) {  /* do we have too little space left on the stack? */
+        size_t fpos = func - vm->stack;  /* compute offset of `func` from base stack, in case stack is reallocated and base address changes */
+        be_stack_expansion(vm, expan);  /* expand stack (vector object), warning stack address changes */
+        func = vm->stack + fpos;  /* recompute `func` address with new stack address */
     }
-    be_stack_push(vm, &vm->callstack, NULL);
-    cf = be_stack_top(&vm->callstack);
+    be_stack_push(vm, &vm->callstack, NULL);  /* push a NULL value on callstack */
+    cf = be_stack_top(&vm->callstack);  /* get address of new callframe at top of callstack */
     cf->func = func - mode;
-    cf->top = vm->top;
-    cf->reg = vm->reg;
-    vm->reg = func + 1;
-    vm->top = vm->reg + nstack;
-    vm->cf = cf;
+    cf->top = vm->top;  /* save previous stack top */
+    cf->reg = vm->reg;  /* save previous stack base */
+    vm->reg = func + 1;  /* new stack base is right after function */
+    vm->top = vm->reg + nstack; /* new stack top is above the registers used by the function, so we don´t mess with them */
+    vm->cf = cf;  /* set new current callframe */
 }
 
+/* Prepare call of closure, setting the instruction pointer (ip) */
 static void push_closure(bvm *vm, bvalue *func, int nstack, int mode)
 {
     bclosure *cl = var_toobj(func);
@@ -228,7 +234,8 @@ static bbool obj2bool(bvm *vm, bvalue *var)
     binstance *obj = var_toobj(var);
     bstring *tobool = str_literal(vm, "tobool");
     /* get operator method */
-    if (be_instance_member(vm, obj, tobool, vm->top)) {
+    int type = be_instance_member(vm, obj, tobool, vm->top);
+    if (type != BE_NONE && type != BE_NIL) {
         vm->top[1] = *var; /* move self to argv[0] */
         be_dofunc(vm, vm->top, 1); /* call method 'tobool' */
         /* check the return value */
@@ -273,7 +280,7 @@ static int obj_attribute(bvm *vm, bvalue *o, bvalue *c, bvalue *dst)
     bstring *attr = var_tostr(c);
     binstance *obj = var_toobj(o);
     int type = be_instance_member(vm, obj, attr, dst);
-    if (basetype(type) == BE_NIL) { /* if no method found, try virtual */
+    if (type == BE_NONE) { /* if no method found, try virtual */
         /* get method 'member' */
         int type2 = be_instance_member(vm, obj, str_literal(vm, "member"), vm->top);
         if (basetype(type2) == BE_FUNCTION) {
@@ -287,10 +294,23 @@ static int obj_attribute(bvm *vm, bvalue *o, bvalue *c, bvalue *dst)
             type = var_type(dst);
         }
     }
-    if (basetype(type) == BE_NIL) {
+    if (type == BE_NONE) {
         vm_error(vm, "attribute_error",
             "the '%s' object has no attribute '%s'",
             str(be_instance_name(obj)), str(attr));
+    }
+    return type;
+}
+
+static int class_attribute(bvm *vm, bvalue *o, bvalue *c, bvalue *dst)
+{
+    bstring *attr = var_tostr(c);
+    bclass *obj = var_toobj(o);
+    int type = be_class_member(vm, obj, attr, dst);
+    if (type == BE_NONE || type == BE_INDEX) {
+        vm_error(vm, "attribute_error",
+            "the '%s' class has no static attribute '%s'",
+            str(obj->name), str(attr));
     }
     return type;
 }
@@ -421,6 +441,7 @@ BERRY_API bvm* be_vm_new(void)
     be_globalvar_init(vm);
     be_gc_setpause(vm, 1);
     be_loadlibs(vm);
+    vm->compopt = 0;
 #if BE_USE_OBSERVABILITY_HOOK
     vm->obshook = NULL;
 #endif
@@ -454,9 +475,9 @@ static void vm_exec(bvm *vm)
     vm->cf->status |= BASE_FRAME;
 newframe: /* a new call frame */
     be_assert(var_isclosure(vm->cf->func));
-    clos = var_toobj(vm->cf->func);
-    ktab = clos->proto->ktab;
-    reg = vm->reg;
+    clos = var_toobj(vm->cf->func);  /* `clos` is the current function/closure */
+    ktab = clos->proto->ktab;  /* `ktab` is the current constant table */
+    reg = vm->reg;  /* `reg` is the current stack base for the callframe */
     vm_exec_loop() {
         opcase(LDNIL): {
             var_setnil(RA());
@@ -484,6 +505,38 @@ newframe: /* a new call frame */
             bvalue *v = RA();
             int idx = IGET_Bx(ins);
             *v = *be_global_var(vm, idx);
+            dispatch();
+        }
+        opcase(GETNGBL): {  /* get Global by name */
+            bvalue *v = RA();
+            bvalue *b = RKB();
+            if (var_isstr(b)) {
+                bstring *name = var_tostr(b);
+                int idx = be_global_find(vm, name);
+                if (idx > -1) {
+                    *v = *be_global_var(vm, idx);
+                } else {
+                    vm_error(vm, "attribute_error", "'%s' undeclared", str(name));
+                }
+            } else {
+                vm_error(vm, "internal_error", "global name must be a string");
+            }
+            dispatch();
+        }
+        opcase(SETNGBL): {  /* set Global by name */
+            bvalue *v = RA();
+            bvalue *b = RKB();
+            if (var_isstr(b)) {
+                bstring *name = var_tostr(b);
+                int idx = be_global_find(vm, name);
+                if (idx > -1) {
+                    *be_global_var(vm, idx) = *v;
+                } else {
+                    vm_error(vm, "attribute_error", "'%s' undeclared", str(name));
+                }
+            } else {
+                vm_error(vm, "internal_error", "global name must be a string");
+            }
             dispatch();
         }
         opcase(SETGBL): {
@@ -741,6 +794,9 @@ newframe: /* a new call frame */
             if (var_isinstance(b) && var_isstr(c)) {
                 obj_attribute(vm, b, c, a);
                 reg = vm->reg;
+            } else if (var_isclass(b) && var_isstr(c)) {
+                class_attribute(vm, b, c, a);
+                reg = vm->reg;
             } else if (var_ismodule(b) && var_isstr(c)) {
                 bstring *attr = var_tostr(c);
                 bmodule *module = var_toobj(b);
@@ -830,6 +886,16 @@ newframe: /* a new call frame */
                     vm_error(vm, "attribute_error",
                         "class '%s' cannot assign to attribute '%s'",
                         str(be_instance_name(obj)), str(attr));
+                }
+                dispatch();
+            }
+            if (var_isclass(a) && var_isstr(b)) {
+                bclass *obj = var_toobj(a);
+                bstring *attr = var_tostr(b);
+                if (!be_class_setmember(vm, obj, attr, c)) {
+                    vm_error(vm, "attribute_error",
+                        "class '%s' cannot assign to static attribute '%s'",
+                        str(be_class_name(obj)), str(attr));
                 }
                 dispatch();
             }
@@ -959,7 +1025,7 @@ newframe: /* a new call frame */
             dispatch();
         }
         opcase(RAISE): {
-            if (IGET_RA(ins) < 2) {
+            if (IGET_RA(ins) < 2) {  /* A==2 means no arguments are passed to RAISE, i.e. rethrow with current exception */
                 bvalue *top = vm->top;
                 top[0] = *RKB(); /* push the exception value to top */
                 if (IGET_RA(ins)) { /* has exception argument? */
@@ -986,8 +1052,8 @@ newframe: /* a new call frame */
             dispatch();
         }
         opcase(CALL): {
-            bvalue *var = RA();
-            int mode = 0, argc = IGET_RKB(ins);
+            bvalue *var = RA();  /* `var` is the register for the call followed by arguments */
+            int mode = 0, argc = IGET_RKB(ins);  /* B contains number of arguments pushed on stack */
         recall: /* goto: instantiation class and call constructor */
             switch (var_type(var)) {
             case NOT_METHOD:
@@ -995,8 +1061,8 @@ newframe: /* a new call frame */
                 ++var, --argc, mode = 1;
                 goto recall;
             case BE_CLASS:
-                if (be_class_newobj(vm, var_toobj(var), var, ++argc, mode)) {
-                    reg = vm->reg + mode;
+                if (be_class_newobj(vm, var_toobj(var), var, ++argc, mode)) {  /* instanciate object and find constructor */
+                    reg = vm->reg + mode;  /* constructor found */
                     mode = 0;
                     var = RA() + 1; /* to next register */
                     goto recall; /* call constructor */
@@ -1012,15 +1078,15 @@ newframe: /* a new call frame */
             }
             case BE_CLOSURE: {
                 bvalue *v, *end;
-                bproto *proto = var2cl(var)->proto;
-                push_closure(vm, var, proto->nstack, mode);
-                reg = vm->reg;
-                v = reg + argc;
-                end = reg + proto->argc;
-                for (; v < end; ++v) {
+                bproto *proto = var2cl(var)->proto;  /* get proto for closure */
+                push_closure(vm, var, proto->nstack, mode);  /* prepare stack for closure */
+                reg = vm->reg;  /* `reg` has changed, now new base register */
+                v = reg + argc;  /* end of provided arguments */
+                end = reg + proto->argc;  /* end of expected arguments */
+                for (; v < end; ++v) {  /* set all not provided arguments to nil */
                     var_setnil(v);
                 }
-                goto newframe;
+                goto newframe;  /* continue execution of the closure */
             }
             case BE_NTVCLOS: {
                 bntvclos *f = var_toobj(var);

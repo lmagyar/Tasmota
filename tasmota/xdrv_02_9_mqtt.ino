@@ -197,8 +197,8 @@ void MqttInit(void) {
   Settings->mqtt_port = 8883;
 #endif //USE_MQTT_AZURE_IOT
 #ifdef USE_MQTT_TLS
-  if ((8883 == Settings->mqtt_port) || (8884 == Settings->mqtt_port)) {
-    // Turn on TLS for port 8883 (TLS) and 8884 (TLS, client certificate)
+  if ((8883 == Settings->mqtt_port) || (8884 == Settings->mqtt_port) || (443 == Settings->mqtt_port)) {
+    // Turn on TLS for port 8883 (TLS), 8884 (TLS, client certificate), 443 (TLS, user/password)
     Settings->flag4.mqtt_tls = true;
   }
   Mqtt.mqtt_tls = Settings->flag4.mqtt_tls;   // this flag should not change even if we change the SetOption (until reboot)
@@ -476,6 +476,13 @@ bool MqttPublishLib(const char* topic, const uint8_t* payload, unsigned int plen
     }
   }
 
+#ifdef USE_TASMESH
+ if (MESHrouteMQTTtoMESH(topic, (char*)payload, retained)) {  // If we are a node, send this via ESP-Now
+   yield();
+   return true;
+ }
+#endif  // USE_TASMESH
+
 #ifdef USE_MQTT_AZURE_IOT
   String sourceTopicString = urlEncodeBase64(String(topic));
   String topicString = "devices/" + String(SettingsText(SET_MQTT_CLIENT));
@@ -506,9 +513,7 @@ bool MqttPublishLib(const char* topic, const uint8_t* payload, unsigned int plen
 }
 
 void MqttDataHandler(char* mqtt_topic, uint8_t* mqtt_data, unsigned int data_len) {
-#ifdef USE_DEBUG_DRIVER
-  ShowFreeMem(PSTR("MqttDataHandler"));
-#endif
+  SHOW_FREE_MEM(PSTR("MqttDataHandler"));
 
   // Do not allow more data than would be feasable within stack space
   if (data_len >= MQTT_MAX_PACKET_SIZE) { return; }
@@ -554,6 +559,14 @@ void MqttDataHandler(char* mqtt_topic, uint8_t* mqtt_data, unsigned int data_len
   if (Mqtt.disable_logging) {
     TasmotaGlobal.masterlog_level = LOG_LEVEL_DEBUG_MORE;  // Hide logging
   }
+
+#ifdef USE_TASMESH
+#ifdef ESP32
+  if (MESHinterceptMQTTonBroker(topic, (uint8_t*)mqtt_data, data_len +1)) {
+    return;  // Check if this is a message for a node
+  }
+#endif  // ESP32
+#endif  // USE_TASMESH
 
   // MQTT pre-processing
   XdrvMailbox.index = strlen(topic);
@@ -605,9 +618,7 @@ void MqttPublishLoggingAsync(bool refresh) {
 void MqttPublishPayload(const char* topic, const char* payload, uint32_t binary_length, bool retained) {
   // Publish <topic> payload string or binary when binary_length set with optional retained
 
-#ifdef USE_DEBUG_DRIVER
-  ShowFreeMem(PSTR("MqttPublish"));
-#endif
+  SHOW_FREE_MEM(PSTR("MqttPublish"));
 
   bool binary_data = (binary_length > 0);
   if (!binary_data) {
@@ -621,11 +632,16 @@ void MqttPublishPayload(const char* topic, const char* payload, uint32_t binary_
   // To lower heap usage the payload is not copied to the heap but used directly
   String log_data_topic;                                 // 20210420 Moved to heap to solve tight stack resulting in exception 2
   if (Settings->flag.mqtt_enabled && MqttPublishLib(topic, (const uint8_t*)payload, binary_length, retained)) {  // SetOption3 - Enable MQTT
+#ifdef USE_TASMESH
+    log_data_topic = (MESHroleNode()) ? F("MSH: ") : F(D_LOG_MQTT);  // MSH: or MQT:
+#else
     log_data_topic = F(D_LOG_MQTT);                      // MQT:
+#endif  // USE_TASMESH
     log_data_topic += topic;                             // stat/tasmota/STATUS2
   } else {
     log_data_topic = F(D_LOG_RESULT);                    // RSL:
-    log_data_topic += strrchr(topic,'/')+1;              // STATUS2
+    char *command = strrchr(topic, '/');                 // If last part of topic it is always the command
+    log_data_topic += (command == nullptr) ? topic : command +1;  // STATUS2
     retained = false;                                    // Without MQTT enabled there is no retained message
   }
   log_data_topic += F(" = ");                            // =
@@ -654,16 +670,12 @@ void MqttPublishPayload(const char* topic, const char* payload) {
 }
 
 void MqttPublish(const char* topic, bool retained) {
-  // Publish <topic> default TasmotaGlobal.mqtt_data string with optional retained
-#ifdef MQTT_DATA_STRING
-  MqttPublishPayload(topic, TasmotaGlobal.mqtt_data.c_str(), 0, retained);
-#else
-  MqttPublishPayload(topic, TasmotaGlobal.mqtt_data, 0, retained);
-#endif
+  // Publish <topic> default ResponseData string with optional retained
+  MqttPublishPayload(topic, ResponseData(), 0, retained);
 }
 
 void MqttPublish(const char* topic) {
-  // Publish <topic> default TasmotaGlobal.mqtt_data string no retained
+  // Publish <topic> default ResponseData string no retained
   MqttPublish(topic, false);
 }
 
@@ -734,40 +746,36 @@ void MqttPublishPayloadPrefixTopicRulesProcess_P(uint32_t prefix, const char* su
 }
 
 void MqttPublishPayloadPrefixTopicRulesProcess_P(uint32_t prefix, const char* subtopic, const char* payload) {
-  // Publish <prefix>/<device>/<RESULT or <subtopic>> default TasmotaGlobal.mqtt_data string no retained
+  // Publish <prefix>/<device>/<RESULT or <subtopic>> default ResponseData string no retained
   //   then process rules
   MqttPublishPayloadPrefixTopicRulesProcess_P(prefix, subtopic, payload, false);
 }
 
 void MqttPublishPrefixTopic_P(uint32_t prefix, const char* subtopic, bool retained) {
-  // Publish <prefix>/<device>/<RESULT or <subtopic>> default TasmotaGlobal.mqtt_data string with optional retained
-#ifdef MQTT_DATA_STRING
-  MqttPublishPayloadPrefixTopic_P(prefix, subtopic, TasmotaGlobal.mqtt_data.c_str(), 0, retained);
-#else
-  MqttPublishPayloadPrefixTopic_P(prefix, subtopic, TasmotaGlobal.mqtt_data, 0, retained);
-#endif
+  // Publish <prefix>/<device>/<RESULT or <subtopic>> default ResponseData string with optional retained
+  MqttPublishPayloadPrefixTopic_P(prefix, subtopic, ResponseData(), 0, retained);
 }
 
 void MqttPublishPrefixTopic_P(uint32_t prefix, const char* subtopic) {
-  // Publish <prefix>/<device>/<RESULT or <subtopic>> default TasmotaGlobal.mqtt_data string no retained
+  // Publish <prefix>/<device>/<RESULT or <subtopic>> default ResponseData string no retained
   MqttPublishPrefixTopic_P(prefix, subtopic, false);
 }
 
 void MqttPublishPrefixTopicRulesProcess_P(uint32_t prefix, const char* subtopic, bool retained) {
-  // Publish <prefix>/<device>/<RESULT or <subtopic>> default TasmotaGlobal.mqtt_data string with optional retained
+  // Publish <prefix>/<device>/<RESULT or <subtopic>> default ResponseData string with optional retained
   //   then process rules
   MqttPublishPrefixTopic_P(prefix, subtopic, retained);
   XdrvRulesProcess(0);
 }
 
 void MqttPublishPrefixTopicRulesProcess_P(uint32_t prefix, const char* subtopic) {
-  // Publish <prefix>/<device>/<RESULT or <subtopic>> default TasmotaGlobal.mqtt_data string no retained
+  // Publish <prefix>/<device>/<RESULT or <subtopic>> default ResponseData string no retained
   //   then process rules
   MqttPublishPrefixTopicRulesProcess_P(prefix, subtopic, false);
 }
 
 void MqttPublishTeleSensor(void) {
-  // Publish tele/<device>/SENSOR default TasmotaGlobal.mqtt_data string with optional retained
+  // Publish tele/<device>/SENSOR default ResponseData string with optional retained
   //   then process rules
   MqttPublishPrefixTopicRulesProcess_P(TELE, PSTR(D_RSLT_SENSOR), Settings->flag.mqtt_sensor_retain);  // CMND_SENSORRETAIN
 }
@@ -801,6 +809,11 @@ void MqttPublishPowerState(uint32_t device) {
       Response_P(GetStateText(bitRead(TasmotaGlobal.power, device -1)));
       MqttPublish(stopic, Settings->flag.mqtt_power_retain);  // CMND_POWERRETAIN
     }
+
+#ifdef USE_INFLUXDB
+    InfluxDbPublishPowerState(device);
+#endif
+
 #ifdef USE_SONOFF_IFAN
   }
 #endif  // USE_SONOFF_IFAN
@@ -842,6 +855,8 @@ void MqttDisconnected(int state) {
   }
 
   MqttClient.disconnect();
+  // Check if this solves intermittent MQTT re-connection failures when broker is restarted
+  EspClient.stop();
 
   AddLog(LOG_LEVEL_INFO, PSTR(D_LOG_MQTT D_CONNECT_FAILED_TO " %s:%d, rc %d. " D_RETRY_IN " %d " D_UNIT_SECOND), SettingsText(SET_MQTT_HOST), Settings->mqtt_port, state, Mqtt.retry_counter);
   TasmotaGlobal.rules_flag.mqtt_disconnected = 1;
@@ -1056,17 +1071,9 @@ void MqttReconnect(void) {
   }
 
   String azureMqtt_userString = String(SettingsText(SET_MQTT_HOST)) + "/" + String(SettingsText(SET_MQTT_CLIENT)); + "/?api-version=2018-06-30";
-#ifdef MQTT_DATA_STRING
-  if (MqttClient.connect(TasmotaGlobal.mqtt_client, azureMqtt_userString.c_str(), azureMqtt_password.c_str(), stopic, 1, lwt_retain, TasmotaGlobal.mqtt_data.c_str(), MQTT_CLEAN_SESSION)) {
+  if (MqttClient.connect(TasmotaGlobal.mqtt_client, azureMqtt_userString.c_str(), azureMqtt_password.c_str(), stopic, 1, lwt_retain, ResponseData(), MQTT_CLEAN_SESSION)) {
 #else
-  if (MqttClient.connect(TasmotaGlobal.mqtt_client, azureMqtt_userString.c_str(), azureMqtt_password.c_str(), stopic, 1, lwt_retain, TasmotaGlobal.mqtt_data, MQTT_CLEAN_SESSION)) {
-#endif
-#else
-#ifdef MQTT_DATA_STRING
-  if (MqttClient.connect(TasmotaGlobal.mqtt_client, mqtt_user, mqtt_pwd, stopic, 1, lwt_retain, TasmotaGlobal.mqtt_data.c_str(), MQTT_CLEAN_SESSION)) {
-#else
-  if (MqttClient.connect(TasmotaGlobal.mqtt_client, mqtt_user, mqtt_pwd, stopic, 1, lwt_retain, TasmotaGlobal.mqtt_data, MQTT_CLEAN_SESSION)) {
-#endif
+  if (MqttClient.connect(TasmotaGlobal.mqtt_client, mqtt_user, mqtt_pwd, stopic, 1, lwt_retain, ResponseData(), MQTT_CLEAN_SESSION)) {
 #endif  // USE_MQTT_AZURE_IOT
 #ifdef USE_MQTT_TLS
     if (Mqtt.mqtt_tls) {
@@ -1745,7 +1752,7 @@ const char HTTP_FORM_MQTT1[] PROGMEM =
   "<p><b>" D_CLIENT "</b> (%s)<br><input id='mc' placeholder=\"%s\" value=\"%s\"></p>";
 const char HTTP_FORM_MQTT2[] PROGMEM =
   "<p><b>" D_USER "</b> (" MQTT_USER ")<br><input id='mu' placeholder=\"" MQTT_USER "\" value=\"%s\"></p>"
-  "<p><label><b>" D_PASSWORD "</b><input type='checkbox' onclick='sp(\"mp\")'></label><br><input id='mp' type='password' placeholder=\"" D_PASSWORD "\" value=\"" D_ASTERISK_PWD "\"></p>"
+  "<p><label><b>" D_PASSWORD "</b><input type='checkbox' onclick='sp(\"mp\")'></label><br><input id='mp' type='password' minlength='5' placeholder=\"" D_PASSWORD "\" value=\"" D_ASTERISK_PWD "\"></p>"
   "<p><b>" D_TOPIC "</b> = %%topic%% (%s)<br><input id='mt' placeholder=\"%s\" value=\"%s\"></p>"
   "<p><b>" D_FULL_TOPIC "</b> (%s)<br><input id='mf' placeholder=\"%s\" value=\"%s\"></p>";
 

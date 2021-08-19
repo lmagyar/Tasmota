@@ -81,7 +81,7 @@ uint32_t DecodeLightId(uint32_t hue_id);
 
 #undef USE_SCRIPT_FATFS
 #define USE_SCRIPT_FATFS -1
-#pragma message "universal file system used"
+// #pragma message "universal file system used"
 
 #else // USE_UFILESYS
 
@@ -164,7 +164,10 @@ void Script_ticker4_end(void) {
 #endif
 #endif
 
+#if defined(USE_SML_M) && defined (USE_SML_SCRIPT_CMD)
 extern uint8_t sml_json_enable;
+extern uint8_t dvalid[SML_MAX_VARS];
+#endif
 
 #if defined(EEP_SCRIPT_SIZE) && !defined(ESP32)
 
@@ -784,6 +787,9 @@ char *script;
       if (imemptr) free(imemptr);
       return -4;
     }
+
+    memset(script_mem, 0, script_mem_size);
+
     glob_script_mem.script_mem = script_mem;
     glob_script_mem.script_mem_size = script_mem_size;
 
@@ -1749,6 +1755,7 @@ chknext:
           len = 0;
           goto exit;
         }
+#endif
         if (!strncmp(vname, "abs(", 4)) {
           lp=GetNumericArgument(lp + 4, OPER_EQU, &fvar, gv);
           fvar = fabs(fvar);
@@ -1756,7 +1763,7 @@ chknext:
           len = 0;
           goto exit;
         }
-#endif
+
         if (!strncmp(vname, "asc(", 4)) {
           char str[SCRIPT_MAXSSIZE];
           lp = GetStringArgument(lp + 4, OPER_EQU, str, gv);
@@ -2217,12 +2224,7 @@ chknext:
         if (!strncmp(vname, "fmt(", 4)) {
           lp = GetNumericArgument(lp + 4, OPER_EQU, &fvar, gv);
           if (!fvar) {
-#ifdef ESP8266
             LittleFS.format();
-#endif
-#ifdef ESP32
-            LITTLEFS.format();
-#endif
           } else {
             //SD.format();
           }
@@ -2401,11 +2403,7 @@ chknext:
           char rstring[SCRIPT_MAXSSIZE];
           rstring[0] = 0;
           int8_t index = fvar;
-#ifdef MQTT_DATA_STRING
-          char *wd = TasmotaGlobal.mqtt_data;
-#else
-          char *wd = TasmotaGlobal.mqtt_data.c_str();
-#endif
+          char *wd = ResponseData();
           strlcpy(rstring, wd, glob_script_mem.max_ssize);
           if (index) {
             if (strlen(wd) && index) {
@@ -2430,11 +2428,7 @@ chknext:
                 // preserve mqtt_data
                 char *mqd = (char*)malloc(ResponseSize()+2);
                 if (mqd) {
-#ifdef MQTT_DATA_STRING
-                  strlcpy(mqd, TasmotaGlobal.mqtt_data.c_str(), ResponseSize());
-#else
-                  strlcpy(mqd, TasmotaGlobal.mqtt_data, ResponseSize());
-#endif
+                  strlcpy(mqd, ResponseData(), ResponseSize());
                   wd = mqd;
                   char *lwd = wd;
                   while (index) {
@@ -3148,6 +3142,21 @@ chknext:
           lp = GetNumericArgument(lp + 5, OPER_EQU, &fvar, gv);
           if (fvar < 1) fvar = 1;
           SML_Decode(fvar - 1);
+          lp++;
+          len = 0;
+          goto exit;
+        }
+        if (!strncmp(vname, "smlv[", 5)) {
+          lp = GetNumericArgument(lp + 5, OPER_EQU, &fvar, gv);
+          if (!fvar) {
+            for (uint8_t cnt = 0; cnt < SML_MAX_VARS; cnt++) {
+              dvalid[cnt] = 0;
+            }
+            fvar = 0;
+          } else {
+            if (fvar < 1) fvar = 1;
+            fvar = dvalid[(uint32_t)fvar - 1];
+          }
           lp++;
           len = 0;
           goto exit;
@@ -4990,11 +4999,7 @@ void ScripterEvery100ms(void) {
     if (ResponseLength()) {
       ResponseJsonStart();
       ResponseJsonEnd();
-#ifdef MQTT_DATA_STRING
-      Run_Scripter(">T", 2, TasmotaGlobal.mqtt_data.c_str());
-#else
-      Run_Scripter(">T", 2, TasmotaGlobal.mqtt_data);
-#endif
+      Run_Scripter(">T", 2, ResponseData());
     }
   }
   if (bitRead(Settings->rule_enabled, 0)) {
@@ -7688,6 +7693,7 @@ uint32_t scripter_create_task(uint32_t num, uint32_t time, uint32_t core, uint32
 
 
 int32_t http_req(char *host, char *request) {
+  WiFiClient http_client;
   HTTPClient http;
   int32_t httpCode = 0;
   uint8_t mode = 0;
@@ -7704,12 +7710,12 @@ int32_t http_req(char *host, char *request) {
     // GET
     strcat(hbuff, request);
     //AddLog(LOG_LEVEL_INFO, PSTR("HTTP GET %s"),hbuff);
-    http.begin(hbuff);
+    http.begin(http_client, hbuff);
     httpCode = http.GET();
   } else {
     // POST
     //AddLog(LOG_LEVEL_INFO, PSTR("HTTP POST %s - %s"),hbuff, request);
-    http.begin(hbuff);
+    http.begin(http_client, hbuff);
     http.addHeader("Content-Type", "text/plain");
     httpCode = http.POST(request);
   }
@@ -7717,17 +7723,17 @@ int32_t http_req(char *host, char *request) {
 #ifdef USE_WEBSEND_RESPONSE
 #ifdef MQTT_DATA_STRING
   TasmotaGlobal.mqtt_data = http.getString();
-  //AddLog(LOG_LEVEL_INFO, PSTR("HTTP RESULT %s"), TasmotaGlobal.mqtt_data.c_str());
-  Run_Scripter(">E", 2, TasmotaGlobal.mqtt_data.c_str());
 #else
   strlcpy(TasmotaGlobal.mqtt_data, http.getString().c_str(), ResponseSize());
-  //AddLog(LOG_LEVEL_INFO, PSTR("HTTP RESULT %s"), TasmotaGlobal.mqtt_data);
-  Run_Scripter(">E", 2, TasmotaGlobal.mqtt_data);
 #endif
+  //AddLog(LOG_LEVEL_INFO, PSTR("HTTP RESULT %s"), ResponseData());
+  Run_Scripter(">E", 2, ResponseData());
+
   glob_script_mem.glob_error = 0;
 #endif
 
   http.end();
+  http_client.stop();
 
   return httpCode;
 }
@@ -8423,41 +8429,24 @@ bool Xdrv10(uint8_t function)
       break;
     case FUNC_RULES_PROCESS:
       if (bitRead(Settings->rule_enabled, 0)) {
-#ifdef MQTT_DATA_STRING
 #ifdef USE_SCRIPT_STATUS
-        if (!strncmp_P(TasmotaGlobal.mqtt_data.c_str(), PSTR("{\"Status"), 8)) {
-          Run_Scripter(">U", 2, TasmotaGlobal.mqtt_data.c_str());
+        if (!strncmp_P(ResponseData(), PSTR("{\"Status"), 8)) {
+          Run_Scripter(">U", 2, ResponseData());
         } else {
-          Run_Scripter(">E", 2, TasmotaGlobal.mqtt_data.c_str());
+          Run_Scripter(">E", 2, ResponseData());
         }
 #else
-        Run_Scripter(">E", 2, TasmotaGlobal.mqtt_data.c_str());
+        Run_Scripter(">E", 2, ResponseData());
 #endif
-#else  // MQTT_DATA_STRING
-#ifdef USE_SCRIPT_STATUS
-        if (!strncmp_P(TasmotaGlobal.mqtt_data, PSTR("{\"Status"), 8)) {
-          Run_Scripter(">U", 2, TasmotaGlobal.mqtt_data);
-        } else {
-          Run_Scripter(">E", 2, TasmotaGlobal.mqtt_data);
-        }
-#else
-        Run_Scripter(">E", 2, TasmotaGlobal.mqtt_data);
-#endif
-#endif  // MQTT_DATA_STRING
+
         result = glob_script_mem.event_handeled;
       }
       break;
     case FUNC_TELEPERIOD_RULES_PROCESS:
       if (bitRead(Settings->rule_enabled, 0)) {
-#ifdef MQTT_DATA_STRING
-        if (TasmotaGlobal.mqtt_data.length()) {
-          Run_Scripter(">T", 2, TasmotaGlobal.mqtt_data.c_str());
+        if (ResponseLength()) {
+          Run_Scripter(">T", 2, ResponseData());
         }
-#else
-        if (TasmotaGlobal.mqtt_data[0]) {
-          Run_Scripter(">T", 2, TasmotaGlobal.mqtt_data);
-        }
-#endif
       }
       break;
 #ifdef USE_WEBSERVER

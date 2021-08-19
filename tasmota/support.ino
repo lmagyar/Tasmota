@@ -316,7 +316,7 @@ float CharToFloat(const char *str)
   char *pt = strbuf;
   if (*pt == '\0') { return 0.0; }
 
-  while ((*pt != '\0') && isblank(*pt)) { pt++; }  // Trim leading spaces
+  while ((*pt != '\0') && isspace(*pt)) { pt++; }  // Trim leading spaces
 
   signed char sign = 1;
   if (*pt == '-') { sign = -1; }
@@ -523,12 +523,19 @@ bool StrCaseStr_P(const char* source, const char* search) {
   return (strstr(case_source, case_search) != nullptr);
 }
 
-char* Trim(char* p)
-{
+bool IsNumeric(const char* value) {
+  // Test for characters '-.0123456789'
+  char *digit = (char*)value;
+  while (isdigit(*digit) || *digit == '.' || *digit == '-') { digit++; }
+  return (*digit == '\0');
+}
+
+char* Trim(char* p) {
+  // Remove leading and trailing tab, \n, \v, \f, \r and space
   if (*p != '\0') {
-    while ((*p != '\0') && isblank(*p)) { p++; }  // Trim leading spaces
+    while ((*p != '\0') && isspace(*p)) { p++; }  // Trim leading spaces
     char* q = p + strlen(p) -1;
-    while ((q >= p) && isblank(*q)) { q--; }   // Trim trailing spaces
+    while ((q >= p) && isspace(*q)) { q--; }   // Trim trailing spaces
     q++;
     *q = '\0';
   }
@@ -720,29 +727,35 @@ char* GetPowerDevice(char* dest, uint32_t idx, size_t size)
   return GetPowerDevice(dest, idx, size, 0);
 }
 
-float ConvertTemp(float c)
-{
+float ConvertTempToFahrenheit(float c) {
   float result = c;
 
-  TasmotaGlobal.global_update = TasmotaGlobal.uptime;
-  TasmotaGlobal.temperature_celsius = c;
-
   if (!isnan(c) && Settings->flag.temperature_conversion) {    // SetOption8 - Switch between Celsius or Fahrenheit
-    result = c * 1.8 + 32;                                    // Fahrenheit
+    result = c * 1.8 + 32;                                     // Fahrenheit
   }
   result = result + (0.1 * Settings->temp_comp);
   return result;
 }
 
-float ConvertTempToCelsius(float c)
-{
+float ConvertTempToCelsius(float c) {
   float result = c;
 
-  if (!isnan(c) && Settings->flag.temperature_conversion) {    // SetOption8 - Switch between Celsius or Fahrenheit
-    result = (c - 32) / 1.8;                                  // Celsius
+  if (!isnan(c) && !Settings->flag.temperature_conversion) {   // SetOption8 - Switch between Celsius or Fahrenheit
+    result = (c - 32) / 1.8;                                   // Celsius
   }
   result = result + (0.1 * Settings->temp_comp);
   return result;
+}
+
+void UpdateGlobalTemperature(float c) {
+  TasmotaGlobal.global_update = TasmotaGlobal.uptime;
+  TasmotaGlobal.temperature_celsius = c;
+}
+
+float ConvertTemp(float c) {
+  UpdateGlobalTemperature(c);
+
+  return ConvertTempToFahrenheit(c);
 }
 
 char TempUnit(void)
@@ -958,7 +971,7 @@ const uint8_t sNumbers[] PROGMEM = { 0,0,0,0,0,0,0,
                                      4,4,
                                      255 };
 
-int GetStateNumber(char *state_text)
+int GetStateNumber(const char *state_text)
 {
   char command[CMDSZ];
   int state_number = GetCommandCode(command, sizeof(command), state_text, kOptions);
@@ -1179,6 +1192,14 @@ char* ResponseGetTime(uint32_t format, char* time_str)
   return time_str;
 }
 
+char* ResponseData(void) {
+#ifdef MQTT_DATA_STRING
+  return (char*)TasmotaGlobal.mqtt_data.c_str();
+#else
+  return TasmotaGlobal.mqtt_data;
+#endif
+}
+
 uint32_t ResponseSize(void) {
 #ifdef MQTT_DATA_STRING
   return MAX_LOGSZ;                            // Arbitratry max length satisfying full log entry
@@ -1321,11 +1342,14 @@ int ResponseJsonEndEnd(void)
 }
 
 bool ResponseContains_P(const char* needle) {
+/*
 #ifdef MQTT_DATA_STRING
   return (strstr_P(TasmotaGlobal.mqtt_data.c_str(), needle) != nullptr);
 #else
   return (strstr_P(TasmotaGlobal.mqtt_data, needle) != nullptr);
 #endif
+*/
+  return (strstr_P(ResponseData(), needle) != nullptr);
 }
 
 /*********************************************************************************************\
@@ -1609,7 +1633,13 @@ bool RedPin(uint32_t pin) // pin may be dangerous to change, display in RED in t
 #if defined(ESP32) && CONFIG_IDF_TARGET_ESP32C3
   return false;     // no red pin on ESP32C3
 #else // ESP32 and ESP8266
+
+#ifdef CONFIG_IDF_TARGET_ESP32
+  return (16==pin)||(17==pin)||(9==pin)||(10==pin);
+#else
   return (9==pin)||(10==pin);
+#endif
+
 #endif
 }
 
@@ -1618,11 +1648,13 @@ uint32_t ValidPin(uint32_t pin, uint32_t gpio) {
     return GPIO_NONE;    // Disable flash pins GPIO6, GPIO7, GPIO8 and GPIO11
   }
 
+#ifndef CONFIG_IDF_TARGET_ESP32C3
   if ((WEMOS == Settings->module) && !Settings->flag3.user_esp8285_enable) {  // SetOption51 - Enable ESP8285 user GPIO's
     if ((9 == pin) || (10 == pin)) {
       return GPIO_NONE;  // Disable possible flash GPIO9 and GPIO10
     }
   }
+#endif  // not ESP32C3
 
   return gpio;
 }
@@ -2300,8 +2332,7 @@ bool GetLog(uint32_t req_loglevel, uint32_t* index_p, char** entry_pp, size_t* l
 #endif  // ESP32
 
   if (!index) {                            // Dump all
-    index = TasmotaGlobal.log_buffer_pointer +1;
-    if (index > 255) { index = 1; }
+    index = TasmotaGlobal.log_buffer[0];
   }
 
   do {
