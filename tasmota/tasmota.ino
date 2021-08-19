@@ -75,6 +75,8 @@
 #endif  // ESP32
 #endif  // USE_UFILESYS
 
+#include "user_config_override_precompile.h" // Special user configurations
+
 // Structs
 #include "settings.h"
 
