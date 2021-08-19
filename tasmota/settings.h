@@ -600,7 +600,11 @@ typedef struct {
   uint32_t      ipv4_rgx_address;          // 558
   uint32_t      ipv4_rgx_subnetmask;       // 55C
 
-  uint8_t       free_560[92];              // 560
+  uint8_t       free_560[64];              // 560
+
+  uint16_t      slow_pwm_period;           // 5A0
+
+  uint8_t       free_5A2[26];              // 5A2
 
   SysMBitfield1 flag2;                     // 5BC
   unsigned long pulse_counter[MAX_COUNTERS];  // 5C0
