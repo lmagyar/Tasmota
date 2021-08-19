@@ -83,8 +83,6 @@ Examples :
 */
 
 
-
-
 #ifdef USE_DOMOTICZ
 #undef USE_DOMOTICZ
 #endif
@@ -103,6 +101,12 @@ Examples :
 
 #ifdef USE_KNX_WEB_MENU
 #undef USE_KNX_WEB_MENU
+#endif
+
+
+#ifdef FIRMWARE_IR__NOMODULATION
+#undef IR_SEND_USE_MODULATION
+#define IR_SEND_USE_MODULATION false
 #endif
 
 

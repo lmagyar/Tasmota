@@ -29,7 +29,10 @@
 */
 
 
-
+#ifdef FIRMWARE_IR__NOMODULATION
+#undef CODE_IMAGE_STR
+#define CODE_IMAGE_STR "ir-nomodulation"
+#endif
 
 
 #endif  // _USER_CONFIG_OVERRIDE_PRECOMPILE_H_
