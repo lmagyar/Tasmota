@@ -109,5 +109,9 @@ Examples :
 #define IR_SEND_USE_MODULATION false
 #endif
 
+#ifdef FIRMWARE__SLOWPWM
+#define USE_SLOW_PWM
+#endif
+
 
 #endif  // _USER_CONFIG_OVERRIDE_H_

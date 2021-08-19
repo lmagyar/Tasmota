@@ -35,4 +35,10 @@
 #endif
 
 
+#ifdef FIRMWARE__SLOWPWM
+#undef CODE_IMAGE_STR
+#define CODE_IMAGE_STR "tasmota-slowpwm"
+#endif
+
+
 #endif  // _USER_CONFIG_OVERRIDE_PRECOMPILE_H_
