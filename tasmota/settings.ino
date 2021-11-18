@@ -64,6 +64,10 @@ bool RtcSettingsLoad(uint32_t update) {
       RtcSettings.valid = RTC_MEM_VALID;
       RtcSettings.energy_kWhtoday = Settings->energy_kWhtoday;
       RtcSettings.energy_kWhtotal = Settings->energy_kWhtotal;
+      for (uint32_t i = 0; i < 3; i++) {
+        RtcSettings.energy_kWhtoday_ph[i] = Settings->energy_kWhtoday_ph[i];
+        RtcSettings.energy_kWhtotal_ph[i] = Settings->energy_kWhtotal_ph[i];
+      }
       RtcSettings.energy_usage = Settings->energy_usage;
       for (uint32_t i = 0; i < MAX_COUNTERS; i++) {
         RtcSettings.pulse_counter[i] = Settings->pulse_counter[i];
@@ -275,6 +279,38 @@ void UpdateQuickPowerCycle(bool update) {
 
 #endif  // FIRMWARE_MINIMAL
 }
+
+#ifdef USE_EMERGENCY_RESET
+/*********************************************************************************************\
+ * Emergency reset if Rx and Tx are tied together
+\*********************************************************************************************/
+
+void EmergencyReset(void) {
+  Serial.begin(115200);
+  Serial.write(0xA5);
+  Serial.write(0x5A);
+  delay(1);
+  if (Serial.available() == 2) {
+    if ((Serial.read() == 0xA5) && (Serial.read() == 0x5A)) {
+      SettingsErase(3);       // Reset all settings including QuickPowerCycle flag
+
+      do {                    // Wait for user to remove Rx Tx jumper and power cycle
+        Serial.write(0xA5);
+        delay(1000);          // Satisfy SDK
+      } while (Serial.read() == 0xA5);  // Poll for removal of jumper
+
+      ESP_Restart();          // Restart to init default settings
+    }
+  }
+  Serial.println();
+  Serial.flush();
+#ifdef ESP32
+  delay(10);                  // Allow time to cleanup queues - if not used hangs ESP32
+  Serial.end();
+  delay(10);                  // Allow time to cleanup queues - if not used hangs ESP32
+#endif  // ESP32
+}
+#endif  // USE_EMERGENCY_RESET
 
 /*********************************************************************************************\
  * Settings services
@@ -649,10 +685,15 @@ void SettingsLoad(void) {
     }
   }
 #endif  // ESP8266
+
 #ifdef ESP32
   uint32_t source = SettingsRead(Settings, sizeof(TSettings));
-  if (source) { settings_location = 1; }
-  AddLog(LOG_LEVEL_NONE, PSTR(D_LOG_CONFIG "Loaded from %s, " D_COUNT " %lu"), (source)?"File":"Nvm", Settings->save_flag);
+  if (source) {
+    settings_location = 1;
+    if (Settings->cfg_holder == (uint16_t)CFG_HOLDER) {
+      AddLog(LOG_LEVEL_NONE, PSTR(D_LOG_CONFIG "Loaded from %s, " D_COUNT " %lu"), (source)?"File":"Nvm", Settings->save_flag);
+    }
+  }
 #endif  // ESP32
 
 #ifndef FIRMWARE_MINIMAL
@@ -888,7 +929,11 @@ void SettingsDefaultSet2(void) {
   Settings->weblog_level = WEB_LOG_LEVEL;
   SettingsUpdateText(SET_WEBPWD, PSTR(WEB_PASSWORD));
   SettingsUpdateText(SET_CORS, PSTR(CORS_DOMAIN));
-
+#ifdef DISABLE_REFERER_CHK
+  flag5.disable_referer_chk |= false;
+#else
+  flag5.disable_referer_chk |= true;
+#endif
   // Button
   flag.button_restrict |= KEY_DISABLE_MULTIPRESS;
   flag.button_swap |= KEY_SWAP_DOUBLE_PRESS;
@@ -1087,7 +1132,7 @@ void SettingsDefaultSet2(void) {
   Settings->display_rows = 2;
   Settings->display_cols[0] = 16;
   Settings->display_cols[1] = 8;
-  Settings->display_dimmer = 1;
+  Settings->display_dimmer_protected = -10;  // 10%
   Settings->display_size = 1;
   Settings->display_font = 1;
 //  Settings->display_rotate = 0;
@@ -1396,6 +1441,17 @@ void SettingsDelta(void) {
       SettingsUpdateText(SET_RGX_SSID, PSTR(WIFI_RGX_SSID));
       SettingsUpdateText(SET_RGX_PASSWORD, PSTR(WIFI_RGX_PASSWORD));
       Settings->slow_pwm_period = SLOW_PWM_PERIOD;
+    }
+    if (Settings->version < 0x09050007) {
+#ifdef DISABLE_REFERER_CHK
+      Settings->flag5.disable_referer_chk |= false;
+#else
+      Settings->flag5.disable_referer_chk |= true;
+#endif
+    }
+    if (Settings->version < 0x09050009) {
+      memset(&Settings->energy_kWhtoday_ph, 0, 36);
+      memset(&RtcSettings.energy_kWhtoday_ph, 0, 24);
     }
 
     Settings->version = VERSION;

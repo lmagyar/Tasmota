@@ -416,11 +416,14 @@ void UpdateLedPowerAll()
 
 void SetLedPowerIdx(uint32_t led, uint32_t state)
 {
+/*
+  // Fix legacy led support 20211016 (Notice: legacy led supports TWO leds max)
   if (!PinUsed(GPIO_LEDLNK) && (0 == led)) {  // Legacy - LED1 is link led only if LED2 is present
     if (PinUsed(GPIO_LED1, 1)) {
       led = 1;
     }
   }
+*/
   if (PinUsed(GPIO_LED1, led)) {
     uint32_t mask = 1 << led;
     if (state) {
@@ -448,10 +451,15 @@ void SetLedPowerIdx(uint32_t led, uint32_t state)
 #endif // USE_BUZZER
 }
 
-void SetLedPower(uint32_t state)
+void SetLedPower(bool state)
 {
   if (!PinUsed(GPIO_LEDLNK)) {           // Legacy - Only use LED1 and/or LED2
+/*
     SetLedPowerIdx(0, state);
+*/
+    // Fix legacy led support 20211016 (Notice: legacy led supports TWO leds max)
+    uint32_t led = (PinUsed(GPIO_LED1, 1)) ? 1 : 0;
+    SetLedPowerIdx(led, state);
   } else {
     power_t mask = 1;
     for (uint32_t i = 0; i < TasmotaGlobal.leds_present; i++) {  // Map leds to power
@@ -515,6 +523,7 @@ bool SendKey(uint32_t key, uint32_t device, uint32_t state)
 // state 6 = POWER_CLEAR = button released
 // state 7 = POWER_RELEASE = button released
 // state 9 = CLEAR_RETAIN = clear retain flag
+// state 10 = POWER_DELAYED = button released delayed
 
   char stopic[TOPSZ];
   char scommand[CMDSZ];
@@ -843,7 +852,7 @@ bool MqttShowSensor(void)
   XsnsCall(FUNC_JSON_APPEND);
   XdrvCall(FUNC_JSON_APPEND);
 
-  if (TasmotaGlobal.global_update) {
+  if (TasmotaGlobal.global_update && Settings->flag.mqtt_add_global_info) {
     if ((TasmotaGlobal.humidity > 0) || !isnan(TasmotaGlobal.temperature_celsius) || (TasmotaGlobal.pressure_hpa != 0)) {
       uint32_t add_comma = 0;
       ResponseAppend_P(PSTR(",\"Global\":{"));
@@ -1782,6 +1791,7 @@ void GpioInit(void)
 
 #ifdef ESP8266
   if ((2 == Pin(GPIO_TXD)) || (H801 == TasmotaGlobal.module_type)) { Serial.set_tx(2); }
+  SetSerialSwap();
 #endif
 
   uint32_t sspi_mosi = (PinUsed(GPIO_SSPI_SCLK) && PinUsed(GPIO_SSPI_MOSI)) ? SPI_MOSI : SPI_NONE;
