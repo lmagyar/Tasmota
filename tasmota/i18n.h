@@ -372,6 +372,7 @@
 // Commands xdrv_02_mqtt.ino
 #define D_SO_MQTTJSONONLY "MqttJSONOnly"
 #define D_SO_MQTTTLS "MqttTLS"
+#define D_SO_MQTTTLS_FINGERPRINT "MqttTLSFingerprint"
 #define D_SO_MQTTNORETAIN "MqttNoRetain"
 #define D_SO_MQTTDETACHRELAY "MqttDetachRelay"
 #define D_CMND_MQTTLOG "MqttLog"
@@ -478,6 +479,7 @@
 #define D_CMND_FADE "Fade"
 #define D_CMND_PALETTE "Palette"
 #define D_CMND_PIXELS "Pixels"
+#define D_CMND_STEPPIXELS "StepPixels"
 #define D_CMND_RGBWWTABLE "RGBWWTable"
 #define D_CMND_ROTATION "Rotation"
 #define D_CMND_SCHEME "Scheme"
@@ -693,6 +695,9 @@
 #define D_CMND_SHUTTER_INVERTWEBBUTTONS "InvertWebButtons"
 #define D_CMND_SHUTTER_PWMRANGE "PWMRange"
 #define D_CMND_SHUTTER_UNITTEST "UnitTest"
+#define D_CMND_SHUTTER_TILTCONFIG "TiltConfig"
+#define D_CMND_SHUTTER_SETTILT "Tilt"
+#define D_CMND_SHUTTER_TILTINCDEC "TiltChange"
 
 // Commands xdrv_32_hotplug.ino
 #define D_CMND_HOTPLUG "HotPlug"
@@ -711,6 +716,9 @@
 #define D_PRFX_BR "Br"
 #define D_CMND_BR_RUN ""
 #define D_BR_NOT_STARTED  "Berry not started"
+
+// Commands xdrv_60_shift595.ino - 74x595 family shift register driver
+#define D_CMND_SHIFT595_DEVICE_COUNT "Shift595DeviceCount"
 
 // Commands xsns_02_analog.ino
 #define D_CMND_ADCPARAM "AdcParam"
