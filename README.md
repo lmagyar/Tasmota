@@ -1,5 +1,27 @@
 ![Tasmota logo](/tools/logo/TASMOTA_FullLogo_Vector.svg)
 
+![Warning](https://github.com/lmagyar/Tasmota/blob/master-custom/info/warning_stripe_wide.png)
+
+> This is a **fork** of the [official Tasmota firmware](https://github.com/arendst/Tasmota)!
+> 
+> Changes:
+> 
+> - contains a **PWM implementation with slower than 1Hz periods**, on how to use it see comments at the beginning of the [xdrv_128_slow_pwm driver] (https://github.com/lmagyar/Tasmota/blob/master-custom/tasmota/xdrv_128_slow_pwm.ino)
+> - disabled:
+>   - DOMOTICZ
+>   - KNX, KNX\_WEB\_MENU
+>   - EMULATION\_HUE, EMULATION\_WEMO
+> - in case of IR firmware, another build is added with disabled: IR_SEND_USE_MODULATION
+> - in case of normal firmware, another build is added with enabled: SLOW_PWM
+> - builds only these firmwares: 
+>   - tasmota
+>   - tasmota--slowpwm
+>   - tasmota-minimal
+>   - tasmota-sensors
+>   - tasmota-ir--nomodulation
+
+![Warning](https://github.com/lmagyar/Tasmota/blob/master-custom/info/warning_stripe_wide.png)
+
 Alternative firmware for [ESP8266](https://en.wikipedia.org/wiki/ESP8266) and [ESP32](https://en.wikipedia.org/wiki/ESP32) based devices with **easy configuration using webUI, OTA updates, automation using timers or rules, expandability and entirely local control over MQTT, HTTP, Serial or KNX**.
 _Written for PlatformIO with limited support for Arduino IDE._
 
