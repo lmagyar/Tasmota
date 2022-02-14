@@ -19,6 +19,10 @@
 >   - tasmota-minimal
 >   - tasmota-sensors
 >   - tasmota-ir--nomodulation
+>   - tasmota32
+>   - tasmota32--slowpwm
+>   - tasmota32-webcam
+>   - tasmota32c3
 
 ![Warning](https://github.com/lmagyar/Tasmota/blob/master-custom/info/warning_stripe_wide.png)
 
