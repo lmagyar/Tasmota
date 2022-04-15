@@ -18,6 +18,7 @@ jobs:
           - tasmota
           - tasmota--slowpwm
 #          - tasmota4M
+#          - tasmota-debug
           - tasmota-minimal
 #          - tasmota-display
 #          - tasmota-ir
