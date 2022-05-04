@@ -17,15 +17,18 @@ jobs:
         variant:
           - tasmota
           - tasmota--slowpwm
+          - tasmota2M
 #          - tasmota4M
 #          - tasmota-debug
           - tasmota-minimal
 #          - tasmota-display
 #          - tasmota-ir
           - tasmota-ir--nomodulation
+          - tasmota2M-ir--nomodulation
 #          - tasmota-knx
 #          - tasmota-lite
           - tasmota-sensors
+          - tasmota2M-sensors
 #          - tasmota-zbbridge
 #          - tasmota-zigbee
           - tasmota32
@@ -44,8 +47,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v1
       - name: Install dependencies
-        run: |
-          pip install -U platformio
+        run: pip install -U platformio
       - name: Run PlatformIO
         run: platformio run -e ${{ matrix.variant }}
       - uses: actions/upload-artifact@v2
