@@ -18,12 +18,12 @@ jobs:
           - tasmota
           - tasmota--slowpwm
           - tasmota2M
-#          - tasmota4M
+          - tasmota4M
 #          - tasmota-debug
           - tasmota-minimal
 #          - tasmota-display
 #          - tasmota-ir
-          - tasmota-ir--nomodulation
+#          - tasmota-ir--nomodulation
           - tasmota2M-ir--nomodulation
 #          - tasmota-knx
 #          - tasmota-lite
