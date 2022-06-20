@@ -37,6 +37,9 @@ uint32_t GetRtcSettingsCrc(void) {
 
 void RtcSettingsSave(void) {
   RtcSettings.baudrate = Settings->baudrate * 300;
+  if (UtcTime() > START_VALID_TIME) {  // 2016-01-01
+    RtcSettings.utc_time = UtcTime();
+  }
   if (GetRtcSettingsCrc() != rtc_settings_crc) {
 
     if (RTC_MEM_VALID != RtcSettings.valid) {
@@ -923,6 +926,7 @@ void SettingsDefaultSet2(void) {
   flag3.use_wifi_scan |= WIFI_SCAN_AT_RESTART;
   flag3.use_wifi_rescan |= WIFI_SCAN_REGULARLY;
   Settings->wifi_output_power = 170;
+  Settings->dns_timeout = DNS_TIMEOUT;
   Settings->param[P_ARP_GRATUITOUS] = WIFI_ARP_INTERVAL;
   ParseIPv4(&Settings->ipv4_address[0], PSTR(WIFI_IP_ADDRESS));
   ParseIPv4(&Settings->ipv4_address[1], PSTR(WIFI_GATEWAY));
@@ -1540,6 +1544,9 @@ void SettingsDelta(void) {
     }
     if (Settings->version < 0x0C000000) {  // 12.0.0.0
       Settings->slow_pwm_period = SLOW_PWM_PERIOD;
+    }
+    if (Settings->version < 0x0C000102) {  // 12.0.1.2
+      Settings->dns_timeout = DNS_TIMEOUT;
     }
 
     Settings->version = VERSION;
