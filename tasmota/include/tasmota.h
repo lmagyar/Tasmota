@@ -93,6 +93,7 @@ const uint8_t MAX_SHUTTERS = 4;             // Max number of shutters
 const uint8_t MAX_SHUTTER_KEYS = 4;         // Max number of shutter keys or buttons
 const uint8_t MAX_PCF8574 = 4;              // Max number of PCF8574 devices
 const uint8_t MAX_DS3502 = 4;               // Max number of DS3502 digitsal potentiometer devices
+const uint8_t MAX_IRSEND = 16;              // Max number of IRSEND GPIOs
 const uint8_t MAX_RULE_SETS = 3;            // Max number of rule sets of size 512 characters
 const uint16_t MAX_RULE_SIZE = 512;         // Max number of characters in rules
 const uint16_t VL53LXX_MAX_SENSORS = 8;     // Max number of VL53L0X sensors
@@ -317,6 +318,8 @@ enum InitStates {INIT_NONE, INIT_GPIOS, INIT_DONE};
 
 enum WifiConfigOptions {WIFI_RESTART, EX_WIFI_SMARTCONFIG, WIFI_MANAGER, EX_WIFI_WPSCONFIG, WIFI_RETRY, WIFI_WAIT, WIFI_SERIAL, WIFI_MANAGER_RESET_ONLY, MAX_WIFI_OPTION};
 
+enum WifiTestOptions {WIFI_NOT_TESTING, WIFI_TESTING, WIFI_TEST_FINISHED, WIFI_TEST_FINISHED_BAD};
+
 enum SwitchModeOptions {TOGGLE, FOLLOW, FOLLOW_INV, PUSHBUTTON, PUSHBUTTON_INV, PUSHBUTTONHOLD, PUSHBUTTONHOLD_INV, PUSHBUTTON_TOGGLE, TOGGLEMULTI,
                         FOLLOWMULTI, FOLLOWMULTI_INV, PUSHHOLDMULTI, PUSHHOLDMULTI_INV, PUSHON, PUSHON_INV, PUSH_IGNORE, MAX_SWITCH_OPTION};
 
@@ -355,7 +358,7 @@ enum SO32_49Index { P_HOLD_TIME,              // SetOption32 - (Button/Switch) K
                     P_OVER_TEMP,              // SetOption42 - (Energy) Turn all power off at or above this temperature (default 90C)
                     P_ROTARY_MAX_STEP,        // SetOption43 - (Rotary) Rotary step boundary (default 10)
                     P_IR_TOLERANCE,           // SetOption44 - (IR) Base tolerance percentage for matching incoming IR messages (default 25, max 100)
-                    P_SO45_FREE,              // SetOption45
+                    P_BISTABLE_PULSE,         // SetOption45 - (Bistable) Pulse time for two coil bistable latching relays (default 40)
                     P_SO46_FREE,              // SetOption46
                     P_SO47_FREE,              // SetOption47
                     P_SO48_FREE,              // SetOption48
@@ -502,7 +505,7 @@ enum TuyaSupportedFunctions { TUYA_MCU_FUNC_NONE,
                               TUYA_MCU_FUNC_LOWPOWER_MODE = 51,
                               TUYA_MCU_FUNC_ENUM1 = 61, TUYA_MCU_FUNC_ENUM2, TUYA_MCU_FUNC_ENUM3, TUYA_MCU_FUNC_ENUM4,
                               TUYA_MCU_FUNC_TEMP = 71, TUYA_MCU_FUNC_TEMPSET, TUYA_MCU_FUNC_HUM, TUYA_MCU_FUNC_HUMSET,
-                              TUYA_MCU_FUNC_LX = 75, TUYA_MCU_FUNC_TVOC, TUYA_MCU_FUNC_CO2, TUYA_MCU_FUNC_ECO2, TUYA_MCU_FUNC_GAS,
+                              TUYA_MCU_FUNC_LX = 75, TUYA_MCU_FUNC_TVOC, TUYA_MCU_FUNC_CO2, TUYA_MCU_FUNC_ECO2, TUYA_MCU_FUNC_GAS, TUYA_MCU_FUNC_PM25,
                               TUYA_MCU_FUNC_TIMER1 = 81, TUYA_MCU_FUNC_TIMER2, TUYA_MCU_FUNC_TIMER3, TUYA_MCU_FUNC_TIMER4,
                               TUYA_MCU_FUNC_MOTOR_DIR = 97,
                               TUYA_MCU_FUNC_ERROR = 98,
