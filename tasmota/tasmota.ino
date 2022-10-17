@@ -116,6 +116,7 @@ struct WIFI {
   uint8_t wifi_test_counter = 0;
   uint16_t save_data_counter = 0;
   uint8_t old_wificonfig = MAX_WIFI_OPTION; // means "nothing yet saved here"
+  uint8_t phy_mode = 0;
   bool wifi_test_AP_TIMEOUT = false;
   bool wifi_Test_Restart = false;
   bool wifi_Test_Save_SSID2 = false;
@@ -227,6 +228,8 @@ bool tasconsole_serial = true;
 #else   // No ESP32
 HardwareSerial TasConsole = Serial;         // Only serial interface
 #endif  // ESP32
+
+char EmptyStr[1] = { 0 };                   // Provide a pointer destination to an empty char string
 
 struct TasmotaGlobal_t {
   uint32_t global_update;                   // Timestamp of last global temperature and humidity update
@@ -463,6 +466,8 @@ void setup(void) {
 #ifdef ESP32
 #if CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32S2 || CONFIG_IDF_TARGET_ESP32S3
 #ifdef USE_USB_CDC_CONSOLE
+  TasConsole.setRxBufferSize(INPUT_BUFFER_SIZE);
+//  TasConsole.setTxBufferSize(INPUT_BUFFER_SIZE);
   TasConsole.begin(115200);    // Will always be 115200 bps
 #if !ARDUINO_USB_MODE
   USB.begin();                 // This needs a serial console with DTR/DSR support
