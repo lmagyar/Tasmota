@@ -1572,9 +1572,6 @@ void SettingsDelta(void) {
         Settings->weight_offset = Settings->energy_frequency_calibration * Settings->weight_calibration;
 #endif
     }
-    if (Settings->version < 0x0C000000) {  // 12.0.0.0
-      Settings->slow_pwm_period = SLOW_PWM_PERIOD;
-    }
     if (Settings->version < 0x0C000102) {  // 12.0.1.2
       Settings->dns_timeout = DNS_TIMEOUT;
     }
@@ -1602,6 +1599,9 @@ void SettingsDelta(void) {
       Settings->webcam_clk = 20;
     }
 #endif  // ESP32
+    if (Settings->version < 0x0C020000) {  // 12.2.0.0
+      Settings->slow_pwm_period = SLOW_PWM_PERIOD;
+    }
 
     Settings->version = VERSION;
     SettingsSave(1);
