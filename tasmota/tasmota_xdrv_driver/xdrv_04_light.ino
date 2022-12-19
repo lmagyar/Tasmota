@@ -135,7 +135,7 @@ const uint8_t LIGHT_COLOR_SIZE = 25;   // Char array scolor size
 const char kLightCommands[] PROGMEM = "|"  // No prefix
   // SetOptions synonyms
   D_SO_CHANNELREMAP "|" D_SO_MULTIPWM "|" D_SO_ALEXACTRANGE "|" D_SO_POWERONFADE "|" D_SO_PWMCT "|"
-  D_SO_WHITEBLEND "|"
+  D_SO_WHITEBLEND "|" D_SO_ARTNET_AUTORUN "|"
   // Other commands
   D_CMND_COLOR "|" D_CMND_COLORTEMPERATURE "|" D_CMND_DIMMER "|" D_CMND_DIMMER_RANGE "|" D_CMND_DIMMER_STEP "|" D_CMND_LEDTABLE "|" D_CMND_FADE "|"
   D_CMND_RGBWWTABLE "|" D_CMND_SCHEME "|" D_CMND_SPEED "|" D_CMND_WAKEUP "|" D_CMND_WAKEUPDURATION "|"
@@ -150,11 +150,14 @@ const char kLightCommands[] PROGMEM = "|"  // No prefix
 #ifdef USE_DGR_LIGHT_SEQUENCE
   "|" D_CMND_SEQUENCE_OFFSET
 #endif  // USE_DGR_LIGHT_SEQUENCE
+#ifdef USE_LIGHT_ARTNET
+  "|" D_CMND_ARTNET "|" D_CMND_ARTNET_CONFIG
+#endif
    "|UNDOCA" ;
 
 SO_SYNONYMS(kLightSynonyms,
   37, 68, 82, 91, 92,
-  105,
+  105, 148,
 );
 
 void (* const LightCommand[])(void) PROGMEM = {
@@ -171,6 +174,9 @@ void (* const LightCommand[])(void) PROGMEM = {
 #ifdef USE_DGR_LIGHT_SEQUENCE
   &CmndSequenceOffset,
 #endif  // USE_DGR_LIGHT_SEQUENCE
+#ifdef USE_LIGHT_ARTNET
+  &CmndArtNet, &CmndArtNetConfig,
+#endif
   &CmndUndocA };
 
 // Light color mode, either RGB alone, or white-CT alone, or both only available if ct_rgb_linked is false
@@ -1763,6 +1769,7 @@ void LightReapplyColor(void) {
 void LightAnimate(void)
 {
   bool power_off = false;
+  static int32_t sleep_previous = -1;   // previous value of sleep before changing it to PWM_MAX_SLEEP, -1 means unchanged
 
   // make sure we update CT range in case SetOption82 was changed
   Light.strip_timer_counter++;
@@ -1773,13 +1780,17 @@ void LightAnimate(void)
   // set sleep parameter: either settings,
   // or set a maximum of PWM_MAX_SLEEP if light is on or Fade is running
   if (Light.power || Light.fade_running) {
-    if (Settings->sleep > PWM_MAX_SLEEP) {
+    if (TasmotaGlobal.sleep > PWM_MAX_SLEEP) {
+      sleep_previous = TasmotaGlobal.sleep;     // save previous value of sleep
       TasmotaGlobal.sleep = PWM_MAX_SLEEP;      // set a maximum value (in milliseconds) to sleep to ensure that animations are smooth
     } else {
-      TasmotaGlobal.sleep = Settings->sleep;     // or keep the current sleep if it's low enough
+      sleep_previous = -1;                      // if low enough, don't change it
     }
   } else {
-    TasmotaGlobal.sleep = Settings->sleep;
+    if (sleep_previous > 0) {
+      TasmotaGlobal.sleep = sleep_previous;
+      sleep_previous = -1;                      // rearm
+    }
   }
 #endif  // USE_SLOW_PWM
 
@@ -1861,7 +1872,7 @@ void LightAnimate(void)
         break;
 #endif
       default:
-        XlgtCall(FUNC_SET_SCHEME);
+          XlgtCall(FUNC_SET_SCHEME);
     }
 
 #ifdef USE_DEVICE_GROUPS
@@ -1955,7 +1966,7 @@ void LightAnimate(void)
             Light.fade_start_10[channel_ct] = Light.fade_end_10[channel_ct];
           }
         }
-      
+
         Light.fade_running = true;
         Light.fade_duration = 0;    // set the value to zero to force a recompute
         Light.fade_start = 0;
@@ -2184,13 +2195,13 @@ void LightSetOutputs(const uint16_t *cur_col_10) {
         }
         if (!Settings->flag4.zerocross_dimmer) {
 #ifdef ESP32
-          TasmotaGlobal.pwm_value[i] = cur_col;   // mark the new expected value
+          TasmotaGlobal.pwm_value[i] = ac_zero_cross_power(cur_col);   // mark the new expected value
           // AddLog(LOG_LEVEL_DEBUG_MORE, "analogWrite-%i 0x%03X", i, cur_col);
 #else // ESP32
 #ifdef USE_SLOW_PWM
-          SlowPWMAnalogWrite(Pin(GPIO_PWM1, i), bitRead(TasmotaGlobal.pwm_inverted, i) ? Settings->pwm_range - cur_col : cur_col);
+          SlowPWMAnalogWrite(Pin(GPIO_PWM1, i), bitRead(TasmotaGlobal.pwm_inverted, i) ? Settings->pwm_range - ac_zero_cross_power(cur_col) : ac_zero_cross_power(cur_col));
 #else
-          analogWrite(Pin(GPIO_PWM1, i), bitRead(TasmotaGlobal.pwm_inverted, i) ? Settings->pwm_range - cur_col : cur_col);
+          analogWrite(Pin(GPIO_PWM1, i), bitRead(TasmotaGlobal.pwm_inverted, i) ? Settings->pwm_range - ac_zero_cross_power(cur_col) : ac_zero_cross_power(cur_col));
           // AddLog(LOG_LEVEL_DEBUG_MORE, "analogWrite-%i 0x%03X", bitRead(TasmotaGlobal.pwm_inverted, i) ? Settings->pwm_range - cur_col : cur_col);
 #endif  // USE_SLOW_PWM
 #endif // ESP32
@@ -2232,6 +2243,10 @@ void LightSetOutputs(const uint16_t *cur_col_10) {
   XdrvMailbox.data = (char*)cur_col;
   XdrvMailbox.topic = (char*)scale_col;
   XdrvMailbox.command = (char*)cur_col_10;
+#ifdef USE_LIGHT_ARTNET
+  if (ArtNetSetChannels()) { /* Serviced */}
+  else
+#endif
   if (XlgtCall(FUNC_SET_CHANNELS)) { /* Serviced */ }
   else if (XdrvCall(FUNC_SET_CHANNELS)) { /* Serviced */ }
   XdrvMailbox.data = tmp_data;
@@ -3398,7 +3413,7 @@ void CmndUndocA(void)
  * Interface
 \*********************************************************************************************/
 
-bool Xdrv04(uint8_t function)
+bool Xdrv04(uint32_t function)
 {
   bool result = false;
 
@@ -3416,6 +3431,9 @@ bool Xdrv04(uint8_t function)
             LightSetOutputs(Light.fade_cur_10);
           }
         }
+#ifdef USE_LIGHT_ARTNET
+        ArtNetLoop();
+#endif // USE_LIGHT_ARTNET
         break;
       case FUNC_EVERY_50_MSECOND:
         LightAnimate();
@@ -3448,6 +3466,17 @@ bool Xdrv04(uint8_t function)
       case FUNC_PRE_INIT:
         LightInit();
         break;
+#ifdef USE_LIGHT_ARTNET
+    case FUNC_JSON_APPEND:
+      ArtNetJSONAppend();
+      break;
+    case FUNC_NETWORK_UP:
+      ArtNetFuncNetworkUp();
+      break;
+    case FUNC_NETWORK_DOWN:
+      ArtNetFuncNetworkDown();
+      break;
+#endif // USE_LIGHT_ARTNET
     }
   }
   return result;

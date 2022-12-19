@@ -234,7 +234,7 @@ void CmndSlowPwmPeriod(void)
  * Interface
 \*********************************************************************************************/
 
-bool Xdrv128(uint8_t function) {
+bool Xdrv128(uint32_t function) {
   bool result = false;
 
   switch (function) {

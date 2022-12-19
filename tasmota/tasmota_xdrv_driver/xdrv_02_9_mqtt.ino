@@ -522,11 +522,30 @@ bool MqttPublishLib(const char* topic, const uint8_t* payload, unsigned int plen
 //    AddLog(LOG_LEVEL_DEBUG, PSTR(D_LOG_MQTT "Connection lost or message too large"));
     return false;
   }
+
   uint32_t written = MqttClient.write(payload, plength);
   if (written != plength) {
     AddLog(LOG_LEVEL_DEBUG, PSTR(D_LOG_MQTT "Message too large"));
     return false;
   }
+/*
+  // Solves #6525??
+  const uint8_t* write_buf = payload;
+  uint32_t bytes_remaining = plength;
+  uint32_t bytes_to_write;
+  uint32_t written;
+  while (bytes_remaining > 0) {
+    bytes_to_write = (bytes_remaining > 256) ? 256 : bytes_remaining;
+    written = MqttClient.write(write_buf, bytes_to_write);
+    if (written != bytes_to_write) {
+      AddLog(LOG_LEVEL_DEBUG, PSTR(D_LOG_MQTT "Message too large"));
+      return false;
+    }
+    write_buf += written;
+    bytes_remaining -= written;
+  }
+*/
+
   MqttClient.endPublish();
 
   yield();  // #3313
@@ -952,9 +971,10 @@ void MqttConnected(void) {
         if (static_cast<uint32_t>(WiFi.localIP()) != 0) {
           ResponseAppend_P(PSTR(",\"" D_CMND_HOSTNAME "\":\"%s\",\"" D_CMND_IPADDRESS "\":\"%_I\""),
             TasmotaGlobal.hostname, (uint32_t)WiFi.localIP());
-#if LWIP_IPV6
-          ResponseAppend_P(PSTR(",\"IPv6Address\":\"%s\""), WifiGetIPv6().c_str());
-#endif  // LWIP_IPV6 = 1
+#ifdef USE_IPV6
+          ResponseAppend_P(PSTR(",\"" D_JSON_IP6_GLOBAL "\":\"%s\""), WifiGetIPv6().c_str());
+          ResponseAppend_P(PSTR(",\"" D_JSON_IP6_LOCAL "\":\"%s\""), WifiGetIPv6LinkLocal().c_str());
+#endif  // USE_IPV6
         }
 #if defined(ESP32) && CONFIG_IDF_TARGET_ESP32 && defined(USE_ETHERNET)
         if (static_cast<uint32_t>(EthernetLocalIP()) != 0) {
@@ -1045,11 +1065,12 @@ void MqttReconnect(void) {
   MqttClient.setCallback(MqttDataHandler);
 
   // Keep using hostname to solve rc -4 issues
-  if (!WifiDnsPresent(SettingsText(SET_MQTT_HOST))) {
+  IPAddress ip;
+  if (!WifiHostByName(SettingsText(SET_MQTT_HOST), ip)) {
     MqttDisconnected(-5);  // MQTT_DNS_DISCONNECTED
     return;
   }
-  MqttClient.setServer(SettingsText(SET_MQTT_HOST), Settings->mqtt_port);
+  MqttClient.setServer(ip, Settings->mqtt_port);
 
   if (2 == Mqtt.initial_connection_state) {  // Executed once just after power on and wifi is connected
     Mqtt.initial_connection_state = 1;
@@ -1065,9 +1086,11 @@ void MqttReconnect(void) {
   }
 
 #ifdef USE_MQTT_TLS
+
   uint32_t mqtt_connect_time = millis();
   if (Mqtt.mqtt_tls) {
     tlsClient->stop();
+    tlsClient->setDomainName(SettingsText(SET_MQTT_HOST));   // set domain name for TLS SNI (selection of certificate based on domain name)
   } else {
     MqttClient.setClient(EspClient);
   }
@@ -1984,7 +2007,7 @@ void MqttSaveSettings(void) {
  * Interface
 \*********************************************************************************************/
 
-bool Xdrv02(uint8_t function)
+bool Xdrv02(uint32_t function)
 {
   bool result = false;
 
