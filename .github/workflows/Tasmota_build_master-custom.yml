@@ -12,18 +12,18 @@ jobs:
         variant:
           - tasmota
           - tasmota--slowpwm
-          - tasmota2M
-          - tasmota4M
+          - tasmota-2M
+          - tasmota-4M
 #          - tasmota-debug
           - tasmota-minimal
 #          - tasmota-display
 #          - tasmota-ir
 #          - tasmota-ir--nomodulation
-          - tasmota2M-ir--nomodulation
+          - tasmota-2M-ir--nomodulation
 #          - tasmota-knx
 #          - tasmota-lite
           - tasmota-sensors
-          - tasmota2M-sensors
+          - tasmota-2M-sensors
 #          - tasmota-zbbridge
 #          - tasmota-zigbee
           - tasmota32

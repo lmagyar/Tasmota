@@ -18,10 +18,10 @@
 >   - tasmota--slowpwm
 >   - tasmota-minimal
 >   - tasmota-sensors
->   - tasmota2M
->   - tasmota2M-ir--nomodulation
->   - tasmota2M-sensors
->   - tasmota4M
+>   - tasmota-2M
+>   - tasmota-2M-ir--nomodulation
+>   - tasmota-2M-sensors
+>   - tasmota-4M
 >   - tasmota32
 >   - tasmota32--slowpwm
 >   - tasmota32-webcam
