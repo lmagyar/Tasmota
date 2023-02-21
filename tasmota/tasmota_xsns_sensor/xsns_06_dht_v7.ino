@@ -153,7 +153,7 @@ bool DhtRead(uint32_t sensor) {
       break;
   }
 */
-  delayMicroseconds(Dht[sensor].delay_hi);
+  // delayMicroseconds(Dht[sensor].delay_hi);
 
   // Now start reading the data line to get the value from the DHT sensor.
 
@@ -166,9 +166,13 @@ bool DhtRead(uint32_t sensor) {
   noInterrupts();
 #endif
 
-  // First expect a low signal for ~80 microseconds followed by a high signal
+  // Instead of waiting for a fine tuned time, we can wait until the sensor pulls
+  // the line down for the LOW signal. DhtExpectPulse(HIGH) will return 0 if the
+  // line is already LOW.
+  // Then expect a low signal for ~80 microseconds followed by a high signal
   // for ~80 microseconds again.
-  if (((initial_low_cycles = DhtExpectPulse(LOW)) != UINT32_MAX) && 
+  if ((DhtExpectPulse(HIGH) != UINT32_MAX) &&
+      ((initial_low_cycles = DhtExpectPulse(LOW)) != UINT32_MAX) && 
       ((initial_high_cycles = DhtExpectPulse(HIGH)) != UINT32_MAX)) {
     // Now read the 40 bits sent by the sensor.  Each bit is sent as a 50
     // microsecond low pulse followed by a variable length high pulse.  If the
