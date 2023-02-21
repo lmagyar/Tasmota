@@ -129,6 +129,7 @@ bool DhtRead(uint32_t sensor) {
 */
   delayMicroseconds(Dht[sensor].delay_lo);
 
+  uint32_t initial_low_cycles = 0, initial_high_cycles = 0;
   uint32_t cycles[80] = { 0 };
   uint32_t i = 0;
 
@@ -167,7 +168,8 @@ bool DhtRead(uint32_t sensor) {
 
   // First expect a low signal for ~80 microseconds followed by a high signal
   // for ~80 microseconds again.
-  if ((DhtExpectPulse(LOW) != UINT32_MAX) && (DhtExpectPulse(HIGH) != UINT32_MAX)) {
+  if (((initial_low_cycles = DhtExpectPulse(LOW)) != UINT32_MAX) && 
+      ((initial_high_cycles = DhtExpectPulse(HIGH)) != UINT32_MAX)) {
     // Now read the 40 bits sent by the sensor.  Each bit is sent as a 50
     // microsecond low pulse followed by a variable length high pulse.  If the
     // high pulse is ~28 microseconds then it's a 0 and if it's ~70 microseconds
@@ -193,7 +195,7 @@ bool DhtRead(uint32_t sensor) {
   for (uint32_t i = 0; i < 20; i++) {
     snprintf_P(cycle_dump, sizeof(cycle_dump), PSTR("%s %u"), cycle_dump, cycles[i]);
   }
-  AddLog(LOG_LEVEL_DEBUG_MORE, PSTR("DHT: Pin%d cycles (%d/80) %s .."), dht_pin, i, cycle_dump);
+  AddLog(LOG_LEVEL_DEBUG_MORE, PSTR("DHT: Pin%d cycles (%d/80) %u %u,%s .."), dht_pin, i, initial_low_cycles, initial_high_cycles, cycle_dump);
 
 //  AddLog(LOG_LEVEL_DEBUG_MORE, PSTR("DHT: Pin%d cycles (%d/80) %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u .."),
 //    dht_pin, i, cycles[0], cycles[1], cycles[2], cycles[3], cycles[4], cycles[5], cycles[6], cycles[7], cycles[8], cycles[9], cycles[10], cycles[11], cycles[12], cycles[13], cycles[14], cycles[15]);
