@@ -6,7 +6,7 @@
 > 
 > Changes:
 > 
-> - contains a **PWM implementation with slower than 1Hz periods**, on how to use it see comments at the beginning of the [xdrv_128_slow_pwm driver](https://github.com/lmagyar/Tasmota/blob/master-custom/tasmota/xdrv_128_slow_pwm.ino)
+> - contains a **PWM implementation with slower than 1Hz periods**, on how to use it see comments at the beginning of the [xdrv_128_slow_pwm driver](https://github.com/lmagyar/Tasmota/blob/master-custom/tasmota/tasmota_xdrv_driver/xdrv_128_slow_pwm.ino)
 > - disabled:
 >   - DOMOTICZ
 >   - KNX, KNX\_WEB\_MENU
