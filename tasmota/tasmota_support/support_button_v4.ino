@@ -464,7 +464,7 @@ void ButtonHandler(void) {
             } else {
               if ((Button.hold_timer[button_index] == loops_per_second * hold_time_extent * Settings->param[P_HOLD_TIME] / 10)) {  // SetOption32 (40) - Button held for factor times longer
                 Button.press_counter[button_index] = 0;
-                snprintf_P(scmnd, sizeof(scmnd), PSTR(D_CMND_RESET " 1"));
+                snprintf_P(scmnd, sizeof(scmnd), PSTR(D_CMND_RESTART " 99"));
                 ExecuteCommand(scmnd, SRC_BUTTON);
               }
             }
