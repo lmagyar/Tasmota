@@ -476,7 +476,7 @@ void ButtonHandler(void) {
         if (Button.window_timer[button_index]) {
           Button.window_timer[button_index]--;
         } else {
-          if (!TasmotaGlobal.restart_flag && !Button.hold_timer[button_index] && (Button.press_counter[button_index] > 0) && (Button.press_counter[button_index] < 7)) {
+          if (!TasmotaGlobal.restart_flag && !Button.hold_timer[button_index] && (Button.press_counter[button_index] > 0) && (Button.press_counter[button_index] < 8)) {
 
             bool single_press = false;
             if (Button.press_counter[button_index] < 3) {    // Single or Double press
@@ -526,9 +526,13 @@ void ButtonHandler(void) {
                     }
                   }
 
-                } else {    // 6 press start wificonfig 2
+                } else {
                   if (!Settings->flag.button_restrict) {     // SetOption1  - Control button multipress
-                    snprintf_P(scmnd, sizeof(scmnd), PSTR(D_CMND_WIFICONFIG " 2"));
+                    if (Button.press_counter[button_index] == 6) {
+                      snprintf_P(scmnd, sizeof(scmnd), PSTR(D_CMND_WIFICONFIG " 2")); // 6 press start wificonfig 2
+                    } else {
+                      snprintf_P(scmnd, sizeof(scmnd), PSTR(D_CMND_RESTART " 99"));   // 7 press restart 99
+                    }
                     ExecuteCommand(scmnd, SRC_BUTTON);
                   }
                 }
