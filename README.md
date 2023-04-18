@@ -13,7 +13,7 @@
 >   - EMULATION\_HUE, EMULATION\_WEMO
 > - in case of IR firmware, another build is added with disabled: IR_SEND_USE_MODULATION
 > - in case of normal firmware, another build is added with enabled: SLOW_PWM
-> - each firmware on 20s keypress executes `restart 99` (instead of `reset 1`)
+> - each firmware on 12s keypress executes `restart 99` (instead of `reset 1`)
 > - builds only these firmwares: 
 >   - tasmota
 >   - tasmota--slowpwm
