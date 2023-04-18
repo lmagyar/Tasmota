@@ -134,10 +134,7 @@ void ButtonProbe(void) {
 
   uint32_t not_activated;
   for (uint32_t i = 0; i < MAX_KEYS_SET; i++) {
-    if (!bitRead(Button.used, i)) {
-      Button.probe_mutex = false;
-      return;
-    }
+    if (!bitRead(Button.used, i)) { continue; }
 
     if (PinUsed(GPIO_KEY1, i)) {
 #if defined(SOC_TOUCH_VERSION_1) || defined(SOC_TOUCH_VERSION_2)
@@ -236,6 +233,9 @@ void ButtonProbe(void) {
 void ButtonInit(void) {
   bool ac_detect = (Settings->button_debounce % 10 == 9);
   Button.used = 0;
+/*
+  uint32_t last_used = 0;
+*/
   for (uint32_t i = 0; i < MAX_KEYS_SET; i++) {
     Button.last_state[i] = NOT_PRESSED;
 #ifdef ESP8266
@@ -264,14 +264,13 @@ void ButtonInit(void) {
     }
 #endif  // USE_ADC
     else {
+      // Insert, Skip and Append virtual buttons
       XdrvMailbox.index = i;
       if (XdrvCall(FUNC_ADD_BUTTON)) {
-        /*
-           At entry:
-           XdrvMailbox.index = button index
-           At exit:
-           XdrvMailbox.index bit 0 = current state
-        */
+        // At entry:
+        //   XdrvMailbox.index = button index
+        // At exit:
+        //   XdrvMailbox.index bit 0 = current state
         bitSet(Button.used, i);                // This pin is used
         bool state = (XdrvMailbox.index &1);
         ButtonSetVirtualPinState(i, state);    // Virtual hardware pin state
@@ -283,7 +282,37 @@ void ButtonInit(void) {
       }
     }
     Button.debounced_state[i] = Button.last_state[i];
+/*
+    if (bitRead(Button.used, i)) {
+      last_used = i +1;
+    }
+*/
   }
+
+/*
+  // Append virtual buttons
+  for (uint32_t i = last_used; i < MAX_KEYS_SET; i++) {
+    Button.last_state[i] = NOT_PRESSED;
+
+    XdrvMailbox.index = i;
+    if (XdrvCall(FUNC_ADD_BUTTON)) {
+      // At entry:
+      //   XdrvMailbox.index = button index
+      // At exit:
+      //   XdrvMailbox.index bit 0 = current state
+      bitSet(Button.used, i);                // This pin is used
+      bool state = (XdrvMailbox.index &1);
+      ButtonSetVirtualPinState(i, state);    // Virtual hardware pin state
+      if (!state) { ButtonInvertFlag(i); }   // Set inverted flag
+      // last_state[i] must be 1 to indicate no button pressed
+      Button.last_state[i] = (bitRead(Button.virtual_pin, i) != bitRead(Button.inverted_mask, i));
+
+      AddLog(LOG_LEVEL_DEBUG, PSTR("BTN: Add vButton%d, State %d"), i +1, Button.last_state[i]);
+    }
+
+    Button.debounced_state[i] = Button.last_state[i];
+  }
+*/
 
 //  AddLog(LOG_LEVEL_DEBUG, PSTR("BTN: vPinUsed %08X, State %08X, Invert %08X"), Button.used, Button.virtual_pin, Button.inverted_mask);
 
@@ -334,7 +363,7 @@ void ButtonHandler(void) {
   char scmnd[20];
 
   for (uint32_t button_index = 0; button_index < MAX_KEYS_SET; button_index++) {
-    if (!bitRead(Button.used, button_index)) { return; }
+    if (!bitRead(Button.used, button_index)) { continue; }
 
     uint8_t button = Button.debounced_state[button_index];
 

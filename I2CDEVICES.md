@@ -93,7 +93,7 @@ Index | Define              | Driver   | Device   | Address(es) | Description
   55  | USE_EZOPMP          | xsns_78  | EZOPMP   | 0x61 - 0x70 | Peristaltic Pump
   56  | USE_SEESAW_SOIL     | xsns_81  | SEESOIL  | 0x36 - 0x39 | Adafruit seesaw soil moisture sensor
   57  | USE_TOF10120        | xsns_84  | TOF10120 | 0x52        | Time-of-flight (ToF) distance sensor
-  58  | USE_MPU_ACCEL       | xsns_85  | MPU_ACCEL| 0x68        | MPU6886/MPU9250 6-axis MotionTracking sensor from M5Stac k
+  58  | USE_MPU_ACCEL       | xsns_85  | MPU_ACCEL| 0x68        | MPU6886/MPU9250 6-axis MotionTracking sensor from M5Stack
   59  | USE_BM8563          | xdrv_56  | BM8563   | 0x51        | BM8563 RTC from M5Stack
   60  | USE_AM2320          | xsns_88  | AM2320   | 0x5C        | Temperature and Humidity sensor
   61  | USE_T67XX           | xsns_89  | T67XX    | 0x15        | CO2 sensor
@@ -112,3 +112,6 @@ Index | Define              | Driver   | Device   | Address(es) | Description
   74  | USE_DISPLAY_TM1650  | xdsp_20  | TM1650   | 0x24 - 0x27, 0x34 - 0x37 | Four-digit seven-segment LED controller
   75  | USE_PCA9632         | xdrv_64  | PCA9632  | 0x60        | 4-channel 4-bit pwm driver
   76  | USE_SEN5X           | xsns_103 | SEN5X    | 0x69        | Gas (VOC/NOx index) and air quality (PPM <1,<2.5,<4,<10)
+  77  | USE_MCP23XXX_DRV    | xdrv_67  | MCP23x17 | 0x20 - 0x26 | 16-bit I/O expander as virtual button/switch/relay
+  78  | USE_PMSA003I        | xsns_104 | PMSA003I | 0x12        | PM2.5 Air Quality Sensor with I2C Interface
+  79  | USE_GDK101          | xsns_106 | GDK101   | 0x18 - 0x1B | Gamma Radiation Sensor
