@@ -2,6 +2,8 @@ name: Build_firmware_master-custom
 
 on:
   workflow_dispatch:
+  push:
+    tags: ["v*"]
 
 jobs:
   base-images:
@@ -69,3 +71,41 @@ jobs:
           name: firmware
           path: ./build_output
           retention-days: 1
+
+  release:
+    needs: [base-images]
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/download-artifact@v3
+        with:
+          name: firmware
+          path: ./firmware
+      - name: Zip all map files in one file -> map_all.zip
+        run: 7z a -mx=9 -tzip -xr'!.*' ./firmware/map_all.zip ./firmware/map
+      - name: Zip all firmware files in one file -> firmware_all.zip
+        run: 7z a -mx=9 -tzip -xr'!.*' ./firmware/firmware_all.zip ./firmware/firmware
+      - name: Release
+        if: github.ref_type == 'tag'
+        run: |
+          set -x
+          assets=()
+          for asset in ./firmware/firmware/*; do
+            assets+=("-a" "$asset")
+          done
+          tag_name=${{ github.ref_name }}
+          hub release create "${assets[@]}" -a ./firmware/firmware_all.zip -a ./firmware/map_all.zip -m "$tag_name" "$tag_name"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # - name: Release
+      #   uses: jason2866/action-gh-release@v1.2
+      #   if: github.ref_type == 'tag'
+      #   with:
+      #     tag_name: ${{ github.ref_name }}
+      #     files: |
+      #       ./firmware/firmware/*
+      #       ./firmware/firmware_all.zip
+      #       ./firmware/map_all.zip
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
