@@ -89,12 +89,13 @@ jobs:
       - name: Release
         if: github.ref_type == 'tag'
         run: |
-          set -x
+          set +x
           assets=()
           for asset in ./firmware/firmware/*; do
             assets+=("-a" "$asset")
           done
           tag_name=${{ github.ref_name }}
+          set -x
           hub release create "${assets[@]}" -a ./firmware/firmware_all.zip -a ./firmware/map_all.zip -m "$tag_name" "$tag_name"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
