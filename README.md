@@ -54,7 +54,6 @@ If you like **Tasmota**, give it a star, or fork it and contribute!
 [![GitHub stars](https://img.shields.io/github/stars/arendst/Tasmota.svg?style=social&label=Star)](https://github.com/arendst/Tasmota/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/arendst/Tasmota.svg?style=social&label=Fork)](https://github.com/arendst/Tasmota/network)
 [![donate](https://img.shields.io/badge/donate-PayPal-blue.svg)](https://paypal.me/tasmota)
-[![donate](https://img.shields.io/badge/donate-buy%20me%20a%20coffee-yellow.svg)](https://www.buymeacoffee.com/tasmota)
 
 See [RELEASENOTES.md](https://github.com/arendst/Tasmota/blob/master/RELEASENOTES.md) for release information.
 
@@ -62,7 +61,7 @@ Firmware binaries can be downloaded from http://ota.tasmota.com/tasmota/release/
 
 ## Development
 
-[![Dev Version](https://img.shields.io/badge/development%20version-v12.5.x.x-blue.svg)](https://github.com/arendst/Tasmota)
+[![Dev Version](https://img.shields.io/badge/development%20version-v13.0.x.x-blue.svg)](https://github.com/arendst/Tasmota)
 [![Download Dev](https://img.shields.io/badge/download-development-yellow.svg)](http://ota.tasmota.com/tasmota/)
 [![Tasmota CI](https://github.com/arendst/Tasmota/actions/workflows/build_all_the_things.yml/badge.svg)](https://github.com/arendst/Tasmota/actions/workflows/build_all_the_things.yml)
 [![Build_development](https://github.com/arendst/Tasmota/actions/workflows/Tasmota_build_devel.yml/badge.svg)](https://github.com/arendst/Tasmota/actions/workflows/Tasmota_build_devel.yml)
@@ -156,7 +155,6 @@ You can contribute to Tasmota by
 - Contributing missing [documentation](https://tasmota.github.io/docs) for features and devices
 
 [![donate](https://img.shields.io/badge/donate-PayPal-blue.svg)](https://paypal.me/tasmota)
-[![donate](https://img.shields.io/badge/donate-buy%20me%20a%20coffee-yellow.svg)](https://www.buymeacoffee.com/tasmota)
 
 ## Credits
 
