@@ -29,6 +29,7 @@ jobs:
 #          - tasmota-zigbee
           - tasmota32
           - tasmota32--slowpwm
+#          - tasmota32-arduino30
 #          - tasmota32-zbbrdgpro
           - tasmota32-webcam
 #          - tasmota32-bluetooth
