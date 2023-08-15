@@ -2084,7 +2084,7 @@ bool LightApplyFade(void) {   // did the value chanegd and needs to be applied
       Light.fade_duration = LightGetSpeedSetting() * 500;
       Light.speed_once_enabled = false; // The once off speed value has been read, reset it
       if (!Settings->flag5.fade_fixed_duration) {
-        Light.fade_duration = (distance * Light.fade_duration) / 1023;    // time is proportional to distance, except with SO117
+        Light.fade_duration = (distance * Light.fade_duration) / 1023 + 1 /* make sure value is not zero */;    // time is proportional to distance, except with SO117
       }
       if (Settings->save_data) {
         // Also postpone the save_data for the duration of the Fade (in seconds)
@@ -2192,12 +2192,14 @@ void LightSetOutputs(const uint16_t *cur_col_10) {
         TasmotaGlobal.pwm_value[i] = cur_col;   // mark the new expected value
         // AddLog(LOG_LEVEL_DEBUG_MORE, "analogWrite-%i 0x%03X", i, cur_col);
 #else // ESP32
+        if (!Settings->flag4.zerocross_dimmer) {
 #ifdef USE_SLOW_PWM
-        SlowPWMAnalogWrite(Pin(GPIO_PWM1, i), bitRead(TasmotaGlobal.pwm_inverted, i) ? Settings->pwm_range - cur_col : cur_col);
+          SlowPWMAnalogWrite(Pin(GPIO_PWM1, i), bitRead(TasmotaGlobal.pwm_inverted, i) ? Settings->pwm_range - cur_col : cur_col);
 #else
-        analogWrite(Pin(GPIO_PWM1, i), bitRead(TasmotaGlobal.pwm_inverted, i) ? Settings->pwm_range - cur_col : cur_col);
-        // AddLog(LOG_LEVEL_DEBUG_MORE, "analogWrite-%i 0x%03X", bitRead(TasmotaGlobal.pwm_inverted, i) ? Settings->pwm_range - cur_col : cur_col);
+          analogWrite(Pin(GPIO_PWM1, i), bitRead(TasmotaGlobal.pwm_inverted, i) ? Settings->pwm_range - cur_col : cur_col);
+          // AddLog(LOG_LEVEL_DEBUG_MORE, "analogWrite-%i 0x%03X", bitRead(TasmotaGlobal.pwm_inverted, i) ? Settings->pwm_range - cur_col : cur_col);
 #endif  // USE_SLOW_PWM
+        }
 #endif // ESP32
       }
     }
@@ -3284,6 +3286,7 @@ void CmndVirtualCT(void)
     }
   }
   checkVirtualCT();
+  Light.update = true;
 
   Response_P(PSTR("{\"%s\":{"), XdrvMailbox.command);
   uint32_t pivot_len = CT_PIVOTS;
