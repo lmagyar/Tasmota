@@ -29,7 +29,6 @@ jobs:
 #          - tasmota-zigbee
           - tasmota32
           - tasmota32--slowpwm
-#          - tasmota32-arduino30
 #          - tasmota32-zbbrdgpro
           - tasmota32-webcam
 #          - tasmota32-bluetooth
@@ -43,8 +42,10 @@ jobs:
 #          - tasmota32s2cdc
 #          - tasmota32s3
 #          - tasmota32s3cdc
+#          - tasmota32c2
+#          - tasmota32c6
+#          - tasmota32c6cdc
 #          - tasmota32solo1
-#          - tasmota32solo1-safeboot
 #          - tasmota32-safeboot
 #          - tasmota32c3-safeboot
 #          - tasmota32c3cdc-safeboot
@@ -52,8 +53,14 @@ jobs:
 #          - tasmota32s2cdc-safeboot
 #          - tasmota32s3-safeboot
 #          - tasmota32s3cdc-safeboot
+#          - tasmota32c2-safeboot
+#          - tasmota32c6-safeboot
+#          - tasmota32c6cdc-safeboot
+#          - tasmota32solo1-safeboot
+
 #          - tasmota32-odroidgo
 #          - tasmota32-core2
+#          - tasmota32-arduino30
 
     steps:
       - uses: actions/checkout@v3
